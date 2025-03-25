@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/dexlabsio/garlic/pkg/crypto"
-	"github.com/dexlabsio/garlic/pkg/errors"
-	"github.com/dexlabsio/garlic/pkg/validator"
+	"github.com/dexlabsio/garlic/crypto"
+	"github.com/dexlabsio/garlic/errors"
+	"github.com/dexlabsio/garlic/validator"
 )
 
 type Form[T any] interface {

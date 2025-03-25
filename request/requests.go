@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/dexlabsio/garlic/pkg/errors"
+	"github.com/dexlabsio/garlic/errors"
 	"go.uber.org/zap"
 )
 

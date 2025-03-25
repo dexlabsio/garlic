@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/dexlabsio/garlic/pkg/errors"
+	"github.com/dexlabsio/garlic/errors"
 )
 
 func httpStatusFromError(err *errors.ErrorT) int {

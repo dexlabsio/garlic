@@ -1,7 +1,7 @@
 package logging
 
 import (
-	"github.com/dexlabsio/garlic/pkg/global"
+	"github.com/dexlabsio/garlic/global"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

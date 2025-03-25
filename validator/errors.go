@@ -1,7 +1,7 @@
 package validator
 
 import (
-	"github.com/dexlabsio/garlic/pkg/errors"
+	"github.com/dexlabsio/garlic/errors"
 )
 
 type ValidationError struct {

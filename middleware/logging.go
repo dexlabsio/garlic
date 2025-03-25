@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dexlabsio/garlic/pkg/logging"
-	"github.com/dexlabsio/garlic/pkg/request"
+	"github.com/dexlabsio/garlic/logging"
+	"github.com/dexlabsio/garlic/request"
 	"go.uber.org/zap"
 )
 

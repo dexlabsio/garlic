@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	val "github.com/go-playground/validator/v10"
-	"github.com/dexlabsio/garlic/pkg/errors"
+	"github.com/dexlabsio/garlic/errors"
 )
 
 type validationErrors struct {

@@ -15,7 +15,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/dexlabsio/garlic/pkg/logging"
+	"github.com/dexlabsio/garlic/logging"
 	"github.com/wI2L/jsondiff"
 	"go.uber.org/zap"
 )

@@ -7,7 +7,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/dexlabsio/garlic/pkg/logging"
+	"github.com/dexlabsio/garlic/logging"
 	"go.uber.org/zap"
 )
 

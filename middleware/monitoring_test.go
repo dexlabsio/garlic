@@ -14,7 +14,7 @@ import (
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/dexlabsio/garlic/pkg/monitoring"
+	"github.com/dexlabsio/garlic/monitoring"
 )
 
 func TestTrafficMonitoring(t *testing.T) {

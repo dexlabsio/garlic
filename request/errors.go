@@ -1,7 +1,7 @@
 package request
 
 import (
-	"github.com/dexlabsio/garlic/pkg/errors"
+	"github.com/dexlabsio/garlic/errors"
 )
 
 type InvalidRequestError struct {
