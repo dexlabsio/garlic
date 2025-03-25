@@ -29,13 +29,3 @@ func NewSystemError(message string, opts ...Opt) *SystemError {
 		New(message, opts...),
 	}
 }
-
-type NotFoundError struct {
-	*UserError
-}
-
-func NerNotFoundError(message string, opts ...Opt) *NotFoundError {
-	return &NotFoundError{
-		NewUserError(message, opts...),
-	}
-}

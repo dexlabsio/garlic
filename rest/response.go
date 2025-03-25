@@ -13,7 +13,7 @@ func httpStatusFromError(err *errors.ErrorT) int {
 		panic("can't create an status for nil error")
 	}
 
-	var notFoundErr *errors.NotFoundError
+	var notFoundErr *NotFoundError
 	if errors.As(err, &notFoundErr) {
 		return http.StatusNotFound
 	}
