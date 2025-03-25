@@ -1,0 +1,29 @@
+include ./rules/Makefile.silent
+include ./rules/Makefile.settings
+
+ifndef GIT_DEF
+GIT_DEF = 1
+
+GIT ?= git
+
+GIT_TAG := $(shell git tag -l --points-at HEAD)
+GIT_COMMIT := $(shell git describe --always --long --dirty --tags)
+GIT_VERSION := $(shell [ ! -z "${GIT_TAG}" ] && echo "${GIT_TAG}" || echo "${GIT_COMMIT}")
+GIT_REVISION := $(shell git rev-parse HEAD)
+GIT_REMOTE := github.com/${SETTINGS_ORGANIZATION_NAME}/${SETTINGS_PROJECT_NAME}
+
+GIT_DIFF_CMD ?= $(GIT) diff
+
+.PHONY: git-diff
+git-diff:
+ifeq (,$(SILENT))
+	@if ! $(GIT_DIFF_CMD) --quiet; then \
+		printf 'Found changes on local workspace.' ; \
+		printf 'Please run `make fix generate` and commit the changes.\n' ; \
+		exit 1; \
+	fi
+else
+	$(GIT_DIFF_CMD) --quiet
+endif
+
+endif

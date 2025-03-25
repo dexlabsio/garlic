@@ -1,0 +1,19 @@
+# dep
+vendor/
+
+# editor
+*.swp
+*.swo
+
+# build folder
+build/
+
+# coverage
+coverage.out
+
+# cmd binaries
+cmd/skeleton-golang/skeleton-golang
+cmd/migrate/migrate
+
+# secret environment
+.env
