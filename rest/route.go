@@ -7,14 +7,9 @@ import (
 type RouteOptions int
 
 const (
-	// RouteOptionAllowWithoutPasswordChange tells the system to apply less
-	// restrictive policies when available so that some restrictions of auth
-	// and other protection middlewares can be bypassed
-	RouteOptionAllowWithoutPasswordChange RouteOptions = iota
-
 	// RouteOptionAllowPublicAccess tells the system to allow public access
 	// to this route without authentication
-	RouteOptionAllowPublicAccess
+	RouteOptionAllowPublicAccess RouteOptions = iota
 
 	// RouteOptionAllowOnlyAuthenticated tells the system to block the specific
 	// route for external access. Only authenticated users can access this. This
