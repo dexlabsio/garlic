@@ -32,13 +32,6 @@ var (
 	)
 )
 
-// RegisterMetrics registers all metrics in the default registerer
-func RegisterMetrics() {
-	prometheus.MustRegister(LatencyMetric)
-	prometheus.MustRegister(TrafficMetric)
-	prometheus.MustRegister(ActiveRequests)
-}
-
 // IncrementTraffic increments the traffic metric
 func IncrementTraffic(method, route string, status int) {
 	TrafficMetric.WithLabelValues(method, route, strconv.Itoa(status)).Inc()
@@ -57,4 +50,11 @@ func DecrementActiveRequests(method, route string) {
 // ObserveLatency observes the latency metric
 func ObserveLatency(method, route string, latency float64) {
 	LatencyMetric.WithLabelValues(method, route).Observe(latency)
+}
+
+// init registers all metrics in the default registerer
+func init() {
+	prometheus.MustRegister(LatencyMetric)
+	prometheus.MustRegister(TrafficMetric)
+	prometheus.MustRegister(ActiveRequests)
 }
