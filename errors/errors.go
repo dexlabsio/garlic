@@ -44,7 +44,7 @@ func New(message string, opts ...Opt) *ErrorT {
 		StackTrace(),
 	)
 
-	return raw(message, opts...)
+	return Raw(message, opts...)
 }
 
 func Propagate(message string, err error, opts ...Opt) *ErrorT {
@@ -53,13 +53,14 @@ func Propagate(message string, err error, opts ...Opt) *ErrorT {
 		StackTrace(),
 	)
 
-	e := raw(message, opts...)
+	e := Raw(message, opts...)
 	return e.Wrap(err)
 }
 
-func raw(message string, opts ...Opt) *ErrorT {
+func Raw(message string, opts ...Opt) *ErrorT {
 	e := ErrorT{
 		message: message,
+		opts:    map[string]Opt{},
 	}
 
 	for _, opt := range opts {
@@ -104,11 +105,7 @@ func (e *ErrorT) insert(opt Opt) {
 
 // With returns a wrapped copy of the Error with additional opts
 func (e *ErrorT) With(opts ...Opt) *ErrorT {
-	newError := &ErrorT{
-		message: e.message,
-	}
-
-	newError.Wrap(e)
+	newError := e.Copy()
 
 	// Add new options
 	for _, opt := range opts {
@@ -148,6 +145,7 @@ func (e *ErrorT) DTO() map[string]any {
 		}
 	}
 
+	outputs["error"] = e.message
 	return outputs
 }
 

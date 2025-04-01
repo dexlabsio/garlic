@@ -37,9 +37,6 @@ clean: go-clean
 .PHONY: check
 check: test
 
-.PHONY: run
-run: compose-run
-
 ################################################################################
 ## Go-like targets
 ################################################################################
@@ -71,3 +68,12 @@ fix: go-fix
 
 .PHONY: lint
 lint: go-lint
+
+################################################################################
+## Docker
+################################################################################
+
+.PHONY: image
+image:
+	@echo "> Building dev docker image"
+	docker build -t dexlabsio/garlic:dev .

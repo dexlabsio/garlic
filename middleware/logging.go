@@ -11,63 +11,59 @@ import (
 	"go.uber.org/zap"
 )
 
-// The NewLoggingMiddleware function generates a unique request ID for each
+// Logging function generates a unique request ID for each
 // incoming HTTP request, enriches the logger with this ID, and stores both
 // the logger and the ID in the request's context for future use in
 // subsequent layers.
-func NewLoggingMiddleware(logger *zap.Logger) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// If the request is a health check, we don't need to log it.
-			if r.URL.String() == "/health" {
-				next.ServeHTTP(w, r)
-				return
-			}
+func Logging(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If the request is a health check, we don't need to log it.
+		if r.URL.String() == "/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
 
-			start := time.Now()
+		start := time.Now()
 
-			// The request context coming in must already contain the request and session IDs.
-			// We will keep the same request ID in the context to maintain traceability.
-			requestId := request.GetRequestId(r)
-			sessionId := request.GetSessionId(r)
+		// The request context coming in must already contain the request and session IDs.
+		// We will keep the same request ID in the context to maintain traceability.
+		requestId := request.GetRequestId(r)
+		sessionId := request.GetSessionId(r)
 
-			lrw := &loggingResponseWriter{w, http.StatusOK, 0}
-			lrw.Header().Set(request.RequestIdHeaderKey, requestId)
-			lrw.Header().Set(request.SessionIdHeaderKey, sessionId)
+		lrw := &loggingResponseWriter{w, http.StatusOK, 0}
+		lrw.Header().Set(request.RequestIdHeaderKey, requestId)
+		lrw.Header().Set(request.SessionIdHeaderKey, sessionId)
 
-			logger := logger.With(
-				zap.String("request_id", requestId),
-				zap.String("session_id", sessionId),
-				zap.String("request_method", r.Method),
-				zap.String("request_url", r.URL.String()),
-			)
-			logger.Debug(fmt.Sprintf("Started handling %s request for %s", r.Method, r.URL.String()))
+		logger := logging.Global.With(
+			zap.String("request_id", requestId),
+			zap.String("session_id", sessionId),
+			zap.String("request_method", r.Method),
+			zap.String("request_url", r.URL.String()),
+		)
+		logger.Debug(fmt.Sprintf("Handling %s %s", r.Method, r.URL.String()))
 
-			// Set the logger in the context for future use
-			ctx := r.Context()
-			ctx = context.WithValue(ctx, logging.LoggerKey, logger)
-			r = r.WithContext(ctx)
+		// Set the logger in the context for future use
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, logging.LoggerKey, logger)
+		r = r.WithContext(ctx)
 
-			next.ServeHTTP(lrw, r)
+		next.ServeHTTP(lrw, r)
 
-			duration := time.Since(start)
+		duration := time.Since(start)
 
-			logger = logger.With(
-				zap.Int("response_status", lrw.statusCode),
-				zap.Duration("response_time", duration),
-				zap.Int("response_size", lrw.responseSize),
-			)
+		logger = logger.With(
+			zap.Int("response_status", lrw.statusCode),
+			zap.Duration("response_time", duration),
+			zap.Int("response_size", lrw.responseSize),
+		)
 
-			logger.Info(fmt.Sprintf(
-				"Response Status: %d | URI: %s %s | Duration: %s | Response Size: %d bytes",
-				lrw.statusCode,
-				r.Method,
-				r.URL.String(),
-				duration,
-				lrw.responseSize,
-			))
-		})
-	}
+		logger.Info(fmt.Sprintf(
+			"[%d] %s %s",
+			lrw.statusCode,
+			r.Method,
+			r.URL.String(),
+		))
+	})
 }
 
 type loggingResponseWriter struct {
