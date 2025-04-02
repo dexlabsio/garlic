@@ -38,18 +38,26 @@ type ErrorT struct {
 	opts    map[string]Opt
 }
 
+// New creates a new ErrorT instance with the specified message and options.
+// It appends RevTrace and StackTrace options to the provided options list
+// and then calls the Raw function to construct the ErrorT object. This function
+// is typically used to create a new error with additional context or metadata.
 func New(message string, opts ...Opt) *ErrorT {
 	opts = append(opts,
-		RevTrace(2),
+		RevTrace(),
 		StackTrace(),
 	)
 
 	return Raw(message, opts...)
 }
 
+// Propagate creates a new ErrorT instance with the specified message and options,
+// appending RevTrace and StackTrace options to the provided options list. It then
+// wraps the given error with the newly created ErrorT instance. This function is
+// typically used to propagate an existing error with additional context or metadata.
 func Propagate(message string, err error, opts ...Opt) *ErrorT {
 	opts = append(opts,
-		RevTrace(2),
+		RevTrace(),
 		StackTrace(),
 	)
 
@@ -57,6 +65,11 @@ func Propagate(message string, err error, opts ...Opt) *ErrorT {
 	return e.Wrap(err)
 }
 
+// Raw constructs a new ErrorT instance with the given message and options.
+// It initializes an empty map for options and iterates over the provided options,
+// inserting each one into the map using the insert method. This function is used
+// internally to create an ErrorT object with specific options, allowing for
+// customization and additional context to be added to the error.
 func Raw(message string, opts ...Opt) *ErrorT {
 	e := ErrorT{
 		message: message,
@@ -94,6 +107,10 @@ func (e *ErrorT) Unwrap() error {
 // the given opt directly. If it exists, we call the respective
 // Insert function to handle the newly introduced object.
 func (e *ErrorT) insert(opt Opt) {
+	if opt == nil {
+		return
+	}
+
 	key := opt.Key()
 	current, ok := e.opts[key]
 	if !ok || current == nil {
@@ -103,16 +120,10 @@ func (e *ErrorT) insert(opt Opt) {
 	}
 }
 
-// With returns a wrapped copy of the Error with additional opts
-func (e *ErrorT) With(opts ...Opt) *ErrorT {
-	newError := e.Copy()
-
-	// Add new options
+func (e *ErrorT) InsertOpts(opts []Opt) {
 	for _, opt := range opts {
-		newError.insert(opt)
+		e.insert(opt)
 	}
-
-	return newError
 }
 
 func (e *ErrorT) Copy() *ErrorT {
@@ -141,7 +152,9 @@ func (e *ErrorT) DTO() map[string]any {
 	outputs := map[string]any{}
 	for k, v := range e.opts {
 		if v.Visibility() == PUBLIC {
-			outputs[k] = v
+			if v.Value() != nil {
+				outputs[k] = v.Value()
+			}
 		}
 	}
 

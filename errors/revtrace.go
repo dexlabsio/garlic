@@ -23,7 +23,7 @@ func RevTrace() *revTrace {
 }
 
 func (rt *revTrace) Key() string {
-	return "simpletrace"
+	return "revtrace"
 }
 
 func (rt *revTrace) Value() any {
@@ -41,7 +41,7 @@ func (rt *revTrace) Insert(other Opt) Opt {
 
 	otherRevTrace, ok := other.(*revTrace)
 	if !ok {
-		panic("type mismatch inserting revTrace opt")
+		panic("type mismatch inserting revtrace opt")
 	}
 
 	rt.revTrace = fmt.Sprintf("%s\n%s", rt.revTrace, otherRevTrace.revTrace)
