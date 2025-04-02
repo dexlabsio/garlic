@@ -29,7 +29,7 @@ func NewServer(name string) *Server {
 
 	return &Server{
 		Name:   name,
-		router: chi.NewRouter(),
+		router: router,
 	}
 }
 
