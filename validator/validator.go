@@ -2,23 +2,52 @@ package validator
 
 import (
 	"reflect"
-	"regexp"
 	"strings"
 
+	"github.com/dexlabsio/garlic/logging"
 	val "github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 )
 
-var SimpleValidator *val.Validate
+var singleton *Validator
 
-const (
-	alphaSpaceRegexString string = "^[a-zA-Z ]+$"
-)
+type Field = val.FieldLevel
 
-func New() *val.Validate {
-	validate := val.New()
+type Validator struct {
+	*val.Validate
+}
 
-	// Using the names which have been specified for JSON representations of structs, rather than normal Go field names
-	validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
+type FieldValidator interface {
+	Key() string
+	Validate(Field) bool
+}
+
+type Validation struct {
+	key string
+	fn  func(Field) bool
+}
+
+func NewValidation(key string, fn func(Field) bool) *Validation {
+	return &Validation{
+		key: key,
+		fn:  fn,
+	}
+}
+
+func (v *Validation) Key() string {
+	return v.key
+}
+
+func (v *Validation) Validate(field Field) bool {
+	return v.fn(field)
+}
+
+func New() *Validator {
+	v := &Validator{val.New()}
+
+	// Using the names which have been specified for JSON representations of structs,
+	// rather than normal Go field names
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 		if name == "-" {
 			return ""
@@ -26,15 +55,20 @@ func New() *val.Validate {
 		return name
 	})
 
-	if err := validate.RegisterValidation("alpha_space", isAlphaSpace); err != nil {
-		panic(err)
-	}
+	v.Extend(defaultExtendedValidations...)
+	return v
+}
 
-	if err := validate.RegisterValidation("is_safe_path", isSafePath); err != nil {
-		panic(err)
+func (v *Validator) Extend(validations ...FieldValidator) {
+	for _, validation := range validations {
+		if err := v.RegisterValidation(validation.Key(), validation.Validate); err != nil {
+			logging.Global().Fatal(
+				"Failed to register field validator",
+				zap.String("validator_key", validation.Key()),
+				zap.Error(err),
+			)
+		}
 	}
-
-	return validate
 }
 
 func ParseValidationErrors(err error) error {
@@ -49,15 +83,29 @@ func ParseValidationErrors(err error) error {
 	return NewValidationError("validation error", ValidationErrors(valErrs))
 }
 
-func isAlphaSpace(fl val.FieldLevel) bool {
-	reg := regexp.MustCompile(alphaSpaceRegexString)
-	return reg.MatchString(fl.Field().String())
+// Global returns the singleton instance of the Validator.
+// If the singleton is not yet initialized, it creates a new Validator instance
+// and returns it. This ensures that the same Validator instance is used
+// throughout the application, allowing for consistent validation logic.
+func Global() *Validator {
+	if singleton == nil {
+		singleton = New()
+	}
+
+	return singleton
 }
 
-func isSafePath(fl val.FieldLevel) bool {
-	return !strings.Contains(fl.Field().String(), "..")
-}
+// Init initializes the global Validator instance with the provided
+// field validators. If the singleton Validator is already set, it logs
+// a fatal error to prevent reinitialization. This function ensures that
+// the application uses a consistent set of validation rules by extending
+// the default validations with any additional ones provided as arguments.
+func Init(validations ...FieldValidator) {
+	if singleton != nil {
+		logging.Global().Fatal("Failed to initialize new global validator: this is already set")
+	}
 
-func init() {
-	SimpleValidator = New()
+	v := New()
+	v.Extend(validations...)
+	singleton = v
 }

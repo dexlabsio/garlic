@@ -60,7 +60,7 @@ func (s *Server) RegisterApp(app App) {
 // send the context's error to the error channel. Note that http.ListenAndServe does not stop
 // immediately upon context cancellation; it stops only on an error or when the process exits.
 func (s *Server) Listen(ctx context.Context, bind string) <-chan error {
-	l := logging.Global
+	l := logging.Global()
 	errCh := make(chan error, 1)
 
 	// This version immediately stops reporting when the context is canceled,

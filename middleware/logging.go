@@ -34,7 +34,7 @@ func Logging(next http.Handler) http.Handler {
 		lrw.Header().Set(request.RequestIdHeaderKey, requestId)
 		lrw.Header().Set(request.SessionIdHeaderKey, sessionId)
 
-		logger := logging.Global.With(
+		logger := logging.Global().With(
 			zap.String("request_id", requestId),
 			zap.String("session_id", sessionId),
 			zap.String("request_method", r.Method),

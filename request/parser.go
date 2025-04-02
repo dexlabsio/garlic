@@ -40,7 +40,7 @@ func DecodeRequestBody[T any](r *http.Request, form T) error {
 }
 
 func ValidateForm[T any](form T) error {
-	if err := validator.SimpleValidator.Struct(form); err != nil {
+	if err := validator.Global().Struct(form); err != nil {
 		return validator.ParseValidationErrors(err)
 	}
 
