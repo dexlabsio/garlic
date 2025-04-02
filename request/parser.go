@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	val "github.com/go-playground/validator/v10"
+
 	"github.com/dexlabsio/garlic/crypto"
 	"github.com/dexlabsio/garlic/errors"
 	"github.com/dexlabsio/garlic/validator"
@@ -19,7 +21,7 @@ type UnsafeForm[T any] interface {
 
 // DecodeRequestBody applies the JSON decoder into the request body and
 // validate the struct formatting requirements using the validator package.
-func DecodeRequestBody[T any](r *http.Request, form T) error {
+func DecodeRequestBody[T any](r *http.Request, form T, v *val.Validate) error {
 	l := GetLogger(r)
 
 	if r.ContentLength == 0 {
@@ -30,7 +32,7 @@ func DecodeRequestBody[T any](r *http.Request, form T) error {
 		)).Wrap(err)
 	}
 
-	if err := ValidateForm(form); err != nil {
+	if err := ValidateForm(form, v); err != nil {
 		return errors.Propagate("failed to validate form", err, errors.Hint(
 			"Please, verify the correctness of the fields",
 		))
@@ -39,8 +41,8 @@ func DecodeRequestBody[T any](r *http.Request, form T) error {
 	return nil
 }
 
-func ValidateForm[T any](form T) error {
-	if err := validator.SimpleValidator.Struct(form); err != nil {
+func ValidateForm[T any](form T, v *val.Validate) error {
+	if err := v.Struct(form); err != nil {
 		return validator.ParseValidationErrors(err)
 	}
 
@@ -49,11 +51,11 @@ func ValidateForm[T any](form T) error {
 
 // ParseForm handles decoding and validation of request bodies
 // into generic forms.
-func ParseForm[T any, F Form[T]](r *http.Request, form F) (T, error) {
+func ParseForm[T any, F Form[T]](r *http.Request, form F, v *val.Validate) (T, error) {
 	var model T
 	l := GetLogger(r)
 
-	if err := DecodeRequestBody(r, form); err != nil {
+	if err := DecodeRequestBody(r, form, v); err != nil {
 		l.Error("Failed to decode request body into a form", errors.Zap(err))
 		return model, err
 	}
@@ -69,11 +71,11 @@ func ParseForm[T any, F Form[T]](r *http.Request, form F) (T, error) {
 
 // ParseUnsafeForm handles decoding and validation of request bodies
 // into generic forms with decrypted values that should be encrypted.
-func ParseUnsafeForm[T any, F UnsafeForm[T]](r *http.Request, form F, crpt crypto.Manager) (T, error) {
+func ParseUnsafeForm[T any, F UnsafeForm[T]](r *http.Request, form F, crpt crypto.Manager, v *val.Validate) (T, error) {
 	var model T
 	l := GetLogger(r)
 
-	if err := DecodeRequestBody(r, form); err != nil {
+	if err := DecodeRequestBody(r, form, v); err != nil {
 		err = NewInvalidRequestError("failed to decode unsafe request body into a form").Wrap(err)
 		l.Error("Failed to parse request body", errors.Zap(err))
 		return model, err
