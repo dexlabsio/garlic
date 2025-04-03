@@ -149,25 +149,33 @@ func (e *ErrorT) Error() string {
 }
 
 func (e *ErrorT) DTO() map[string]any {
-	outputs := map[string]any{}
+	details := map[string]any{}
 	for k, v := range e.opts {
 		if v.Visibility() == PUBLIC {
 			if v.Value() != nil {
-				outputs[k] = v.Value()
+				details[k] = v.Value()
 			}
 		}
 	}
 
-	outputs["error"] = e.message
-	return outputs
+	return map[string]any{
+		"error":   e.message,
+		"details": details,
+	}
 }
 
 func (e *ErrorT) MarshalLogObject(enc zapcore.ObjectEncoder) error {
-	enc.AddString("err", e.message)
+	enc.AddString("message", e.message)
+	enc.AddString("error", e.Error())
+
+	details := map[string]any{}
 	for k, v := range e.opts {
-		enc.AddReflected(k, v)
+		if v.Value() != nil {
+			details[k] = v.Value()
+		}
 	}
 
+	enc.AddReflected("details", details)
 	return nil
 }
 
