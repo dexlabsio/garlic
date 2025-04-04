@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -10,13 +11,33 @@ import (
 )
 
 type Store interface {
+	BeginTxx(ctx context.Context, opts *sql.TxOptions) (*sqlx.Tx, error)
 	Beginx() (*sqlx.Tx, error)
+	BindNamed(query string, arg interface{}) (string, []interface{}, error)
+	Connx(ctx context.Context) (*sqlx.Conn, error)
+	DriverName() string
+	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	MapperFunc(mf func(string) string)
+	MustBegin() *sqlx.Tx
+	MustBeginTx(ctx context.Context, opts *sql.TxOptions) *sqlx.Tx
 	Rebind(string) string
 	MustExec(string, ...interface{}) sql.Result
+	MustExecContext(ctx context.Context, query string, args ...interface{}) sql.Result
+	NamedQueryContext(ctx context.Context, query string, arg interface{}) (*sqlx.Rows, error)
+	PrepareNamed(query string) (*sqlx.NamedStmt, error)
+	PrepareNamedContext(ctx context.Context, query string) (*sqlx.NamedStmt, error)
+	Preparex(query string) (*sqlx.Stmt, error)
+	PreparexContext(ctx context.Context, query string) (*sqlx.Stmt, error)
+	QueryRowx(query string, args ...interface{}) *sqlx.Row
+	QueryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row
+	Queryx(query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	Exec(query string, args ...interface{}) (sql.Result, error)
 	NamedExec(string, interface{}) (sql.Result, error)
+	NamedExecContext(ctx context.Context, query string, arg interface{}) (sql.Result, error)
 	Get(interface{}, string, ...interface{}) error
 	Select(interface{}, string, ...interface{}) error
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 }
 
 type Database struct {
