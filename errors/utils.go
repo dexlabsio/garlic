@@ -2,7 +2,6 @@ package errors
 
 import (
 	stderrors "errors"
-	"reflect"
 )
 
 // Is checks whether the error 'err' is equivalent to the 'target' error.
@@ -19,65 +18,31 @@ func Is(err, target error) bool {
 // also any embedded fields within the error that might match the target's type.
 // Returns true if a match is found and the target is set, otherwise false.
 func As(err error, target any) bool {
-	return AsEmbedded(err, target)
+	return stderrors.As(err, target)
 }
 
-// findEmbedded recursively searches for a value whose type is assignable to targetType.
-// It uses reflect.Type.AssignableTo instead of unconditionally dereferencing pointers.
-func findEmbedded(v reflect.Value, targetType reflect.Type) (reflect.Value, bool) {
-	// If v's type is already assignable to targetType, return it.
-	if v.Type().AssignableTo(targetType) {
-		return v, true
-	}
-	// If v is a pointer, try its element.
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			return reflect.Value{}, false
-		}
-		if res, ok := findEmbedded(v.Elem(), targetType); ok {
-			return res, true
-		}
-	}
-	// If v is a struct, iterate through its anonymous fields.
-	if v.Kind() == reflect.Struct {
-		for i := 0; i < v.NumField(); i++ {
-			field := v.Field(i)
-			fieldInfo := v.Type().Field(i)
-			if fieldInfo.Anonymous {
-				if res, ok := findEmbedded(field, targetType); ok {
-					return res, true
-				}
+// AsKind checks if the provided error 'err' or any error in its chain
+// is of the specified 'kind'. It unwraps the error chain and looks for
+// an error of type *ErrorT that matches the given kind. If a match is
+// found, it returns true along with the matched *ErrorT. Otherwise, it
+// returns false and nil, indicating no match was found in the error chain.
+func AsKind(err error, kind *Kind) (*ErrorT, bool) {
+	for current := err; current != nil; current = stderrors.Unwrap(current) {
+		if e, ok := current.(*ErrorT); ok {
+			if e.kind.Is(kind) {
+				return e, true
 			}
 		}
 	}
-	return reflect.Value{}, false
+
+	return nil, false
 }
 
-// AsEmbedded acts like errors.As but also checks whether any of the unwrapped errors
-// have an embedded field whose type matches the target. If a match is found,
-// it assigns the value to target and returns true.
-func AsEmbedded(err error, target interface{}) bool {
-	if err == nil {
-		return false
-	}
-	// target must be a pointer to a type; get the type that we’re looking for.
-	targetType := reflect.TypeOf(target).Elem()
-
-	// Walk the error chain.
-	for err != nil {
-		// First, try the standard errors.As.
-		if stderrors.As(err, target) {
-			return true
-		}
-		// Use reflection to inspect the concrete value.
-		val := reflect.ValueOf(err)
-		if embeddedVal, found := findEmbedded(val, targetType); found {
-			// Assign the found embedded value to the target pointer.
-			reflect.ValueOf(target).Elem().Set(embeddedVal)
-			return true
-		}
-		// Move to the next error in the chain.
-		err = stderrors.Unwrap(err)
-	}
-	return false
+// IsKind checks if the provided error 'err' or any error in its chain
+// is of the specified 'kind'. It utilizes the AsKind function to determine
+// if there is an error of type *ErrorT in the chain that matches the given kind.
+// Returns true if such an error is found, otherwise false.
+func IsKind(err error, kind *Kind) bool {
+	_, ok := AsKind(err, kind)
+	return ok
 }

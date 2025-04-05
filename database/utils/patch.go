@@ -58,7 +58,7 @@ func ParsePatchFields(resource any) ([]string, []any, error) {
 	// Find and append the ID field
 	idField := v.FieldByName("Id")
 	if !idField.IsValid() {
-		return nil, nil, errors.NewSystemError("missing required ID field")
+		return nil, nil, errors.New(errors.KindSystemError, "missing required ID field")
 	}
 
 	id := idField.Interface().(*uuid.UUID)

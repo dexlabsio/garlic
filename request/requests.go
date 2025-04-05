@@ -14,17 +14,16 @@ import (
 
 // ParseResourceUUID reads the resource id from the request path and tries to parse it into a valid UUID.
 func ParseResourceUUID(r *http.Request, param string) (uuid.UUID, error) {
-	l := GetLogger(r)
-
 	rawResourceId := chi.URLParam(r, param)
 
 	resourceId, err := uuid.Parse(rawResourceId)
 	if err != nil {
-		err = NewInvalidRequestError("failed to parse resource id (int)", errors.Hint(
-			fmt.Sprintf("Something is wrong with the request field '%s'", param),
-		)).Wrap(err)
-		l.Warn("Failed to parse resource id", errors.Zap(err), zap.String("param", param))
-		return uuid.Nil, err
+		return uuid.Nil, errors.Propagate(err,
+			"failed to parse resource id (int)",
+			errors.Hint(
+				fmt.Sprintf("Something is wrong with the request field '%s'", param),
+			),
+		).As(InvalidRequestError)
 	}
 
 	return resourceId, nil
@@ -33,17 +32,16 @@ func ParseResourceUUID(r *http.Request, param string) (uuid.UUID, error) {
 // ParseResourceInt reads the resource id from the request path and attempts to parse it into an integer.
 // If the parsing fails, it logs a warning and returns an error. Otherwise, it returns the parsed integer.
 func ParseResourceInt(r *http.Request, param string) (int, error) {
-	l := GetLogger(r)
-
 	rawResourceId := chi.URLParam(r, param)
 
 	resourceId, err := strconv.Atoi(rawResourceId)
 	if err != nil {
-		err = NewInvalidRequestError("failed to parse resource id (int)", errors.Hint(
-			fmt.Sprintf("Something is wrong with the request field '%s'", param),
-		)).Wrap(err)
-		l.Warn("Failed to parse resource id", errors.Zap(err), zap.String("param", param))
-		return 0, err
+		return 0, errors.Propagate(err,
+			"failed to parse resource id (int)",
+			errors.Hint(
+				fmt.Sprintf("Something is wrong with the request field '%s'", param),
+			),
+		).As(InvalidRequestError)
 	}
 
 	return resourceId, nil
@@ -53,26 +51,25 @@ func ParseResourceInt(r *http.Request, param string) (int, error) {
 // and attempts to unescape it. If the parameter is empty or cannot be unescaped, it logs a warning
 // and returns an error. Otherwise, it returns the unescaped string.
 func ParseResourceString(r *http.Request, param string) (string, error) {
-	l := GetLogger(r)
-
 	str := chi.URLParam(r, param)
 	if str == "" {
-		err := NewInvalidRequestError("path string is empty", errors.Hint(
-			fmt.Sprintf("String path '%s' can't be empty", param),
-		))
-
-		l.Warn("Path string is empty", errors.Zap(err), zap.String("param", param))
-		return "", err
+		return "", errors.New(
+			InvalidRequestError,
+			"path string is empty",
+			errors.Hint(
+				fmt.Sprintf("String path '%s' can't be empty", param),
+			),
+		)
 	}
 
 	unescapedPath, err := url.PathUnescape(str)
 	if err != nil {
-		err := NewInvalidRequestError("failed to unescape path string", errors.Hint(
-			fmt.Sprintf("We couldn't unescape the path string '%s'", param),
-		)).Wrap(err)
-
-		l.Warn("Failed to unescape path string", errors.Zap(err), zap.String("param", param))
-		return "", err
+		return "", errors.Propagate(err,
+			"failed to unescape path string",
+			errors.Hint(
+				fmt.Sprintf("We couldn't unescape the path string '%s'", param),
+			),
+		).As(InvalidRequestError)
 	}
 
 	return unescapedPath, nil
@@ -108,26 +105,27 @@ func ParseParamPagination(r *http.Request) (limit, start int) {
 // the respective value into an UUID. If it breaks the function returns uuid.Nil and a false checker. It also
 // returns a common error message to the user.
 func ParseParamUUID(r *http.Request, param string) (uuid.UUID, error) {
-	l := GetLogger(r)
-
 	rawParam := r.URL.Query().Get(param)
 	if rawParam == "" {
-		err := NewInvalidRequestError("required request param is missing", errors.Hint(
-			fmt.Sprintf("Something is wrong with the request param '%s'", param),
-		))
+		err := errors.New(
+			InvalidRequestError,
+			"required request param is missing",
+			errors.Hint(
+				fmt.Sprintf("Something is wrong with the request param '%s'", param),
+			),
+		)
 
-		l.Warn("Missing required request param", errors.Zap(err), zap.String("param", param))
 		return uuid.Nil, err
 	}
 
 	paramUUID, err := uuid.Parse(rawParam)
 	if err != nil {
-		err = NewInvalidRequestError("malformed required request param", errors.Hint(
-			fmt.Sprintf("Something is wrong with the request param '%s'", param),
-		)).Wrap(err)
-
-		l.Warn("Malformed mandatory request param", errors.Zap(err), zap.String("param", param))
-		return uuid.Nil, err
+		return uuid.Nil, errors.Propagate(err,
+			"malformed required request param",
+			errors.Hint(
+				fmt.Sprintf("Something is wrong with the request param '%s'", param),
+			),
+		).As(InvalidRequestError)
 	}
 
 	return paramUUID, nil
@@ -138,8 +136,6 @@ func ParseParamUUID(r *http.Request, param string) (uuid.UUID, error) {
 // but cannot be parsed into a valid UUID, it logs a warning and returns an error. Otherwise, it returns
 // the parsed UUID.
 func ParseOptionalParamUUID(r *http.Request, param string) (uuid.UUID, error) {
-	l := GetLogger(r)
-
 	rawParam := r.URL.Query().Get(param)
 	if rawParam == "" {
 		return uuid.Nil, nil
@@ -147,12 +143,12 @@ func ParseOptionalParamUUID(r *http.Request, param string) (uuid.UUID, error) {
 
 	paramUUID, err := uuid.Parse(rawParam)
 	if err != nil {
-		err = NewInvalidRequestError("malformed optional request param", errors.Hint(
-			fmt.Sprintf("Something is wrong with the optional request param '%s'", param),
-		)).Wrap(err)
-
-		l.Warn("Malformed optional request param", errors.Zap(err), zap.String("param", param))
-		return uuid.Nil, err
+		return uuid.Nil, errors.Propagate(err,
+			"malformed optional request param",
+			errors.Hint(
+				fmt.Sprintf("Something is wrong with the optional request param '%s'", param),
+			),
+		).As(InvalidRequestError)
 	}
 
 	return paramUUID, nil
@@ -163,17 +159,15 @@ func ParseOptionalParamUUID(r *http.Request, param string) (uuid.UUID, error) {
 // that the required request parameter is missing. Otherwise, it returns the
 // parameter value as a string.
 func ParseParamString(r *http.Request, param string) (string, error) {
-	l := GetLogger(r)
-
 	rawParam := r.URL.Query().Get(param)
 	if rawParam == "" {
-		err := NewInvalidRequestError("missing required request param", errors.Hint(
-			fmt.Sprintf("Request param '%s' is missing", param),
-		))
-
-		l.Warn("Missing required request param", errors.Zap(err), zap.String("param", param))
-
-		return "", err
+		return "", errors.New(
+			InvalidRequestError,
+			"missing required request param",
+			errors.Hint(
+				fmt.Sprintf("Request param '%s' is missing", param),
+			),
+		)
 	}
 
 	return rawParam, nil
@@ -195,10 +189,10 @@ func ParseOptionalParamBool(r *http.Request, param string) (bool, error) {
 
 	val, err := strconv.ParseBool(rawParam)
 	if err != nil {
-		return false, NewInvalidRequestError(
+		return false, errors.Propagate(err,
 			"Optional request param bool was provided but cannot be parsed",
 			errors.Hint(fmt.Sprintf("make sure '%s' request param is either 'true' or 'false', no other value is accepted", param)),
-		).Wrap(err)
+		).As(InvalidRequestError)
 	}
 
 	return val, err
