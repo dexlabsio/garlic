@@ -17,11 +17,7 @@ func httpStatusFromError(err *errors.ErrorT) int {
 		return http.StatusNotFound
 	}
 
-	if errors.IsKind(err, NotFoundError) {
-		return http.StatusBadRequest
-	}
-
-	return http.StatusInternalServerError
+	return http.StatusBadRequest
 }
 
 type PayloadError struct {
@@ -94,18 +90,13 @@ func WriteError(err error) *Response[PayloadError] {
 	}
 
 	// Return internal server error if the error is not a service error
-	var errt *errors.ErrorT
-	if !errors.As(err, &errt) {
+	usrErr, ok := errors.AsKind(err, errors.KindUserError)
+	if !ok {
 		return internalServerErrorResponse
 	}
 
 	// Standardize the error output if the status of the error is 500, 401 or 403,
 	// this way we avoid leaking potential dangerous internal information
-	responseStatus := httpStatusFromError(errt)
-	switch responseStatus {
-	case http.StatusInternalServerError:
-		return internalServerErrorResponse
-	}
-
-	return WriteResponse(responseStatus, PayloadError{Error: errt.DTO()})
+	responseStatus := httpStatusFromError(usrErr)
+	return WriteResponse(responseStatus, PayloadError{Error: usrErr.DTO()})
 }

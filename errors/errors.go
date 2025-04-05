@@ -49,11 +49,12 @@ type ErrorT struct {
 // is enriched with detailed tracing information. This function is useful for propagating
 // errors while maintaining comprehensive error tracking and debugging capabilities.
 func Propagate(err error, message string, opts ...Opt) *ErrorT {
-	kind := KindSystemError
+	kind := KindUnknownError
 	if kinder, ok := err.(Error); ok {
 		kind = kinder.Kind()
 	}
 
+	opts = append(opts, StackTrace(), RevTrace())
 	e := New(kind, message, opts...)
 	return e.wrap(err)
 }
@@ -90,6 +91,15 @@ func From(err error, message string, opts ...Opt) *ErrorT {
 
 	e := New(kind, message, opts...)
 	return e.wrap(err)
+}
+
+// Kind returns the kind of the ErrorT instance.
+// This method provides access to the error kind, which is used to
+// categorize and identify the nature of the error. It is useful for
+// error handling and reporting, allowing developers to determine the
+// specific type of error encountered.
+func (e *ErrorT) Kind() *Kind {
+	return e.kind
 }
 
 // As sets the kind of the ErrorT instance to the specified kind.
@@ -184,6 +194,12 @@ func (e *ErrorT) insert(opt Opt) {
 	}
 }
 
+// Error returns the error message for the ErrorT instance.
+// If the ErrorT instance wraps another error, this method
+// appends the wrapped error's message to the current error
+// message, providing a complete error description. This is
+// useful for error reporting and logging, as it gives a
+// comprehensive view of the error chain.
 func (e *ErrorT) Error() string {
 	message := e.message
 	if e.cause != nil {
@@ -193,7 +209,16 @@ func (e *ErrorT) Error() string {
 	return message
 }
 
+// DTO converts the ErrorT instance into a map suitable for data transfer objects (DTOs).
+// This method constructs a map containing the error message and kind hierarchy, and
+// includes additional details from the options map if they are marked as PUBLIC visibility.
+// It ensures that only relevant and non-sensitive information is exposed, making it
+// suitable for returning error details in API responses or logs.
 func (e *ErrorT) DTO() map[string]any {
+	content := map[string]any{
+		"error": e.message,
+		"kind":  e.kind.Hierarchy(),
+	}
 	details := map[string]any{}
 	for k, v := range e.opts {
 		if v.Visibility() == PUBLIC {
@@ -203,15 +228,21 @@ func (e *ErrorT) DTO() map[string]any {
 		}
 	}
 
-	return map[string]any{
-		"error":   e.message,
-		"details": details,
+	if len(details) > 0 {
+		content["details"] = details
 	}
+
+	return content
 }
 
+// MarshalLogObject encodes the ErrorT instance into a zapcore.ObjectEncoder for structured logging.
+// This method adds the error message, kind, and any additional details from the options map to the
+// encoder. It ensures that all relevant error information is captured in the log, facilitating
+// comprehensive error tracking and debugging when using the zap logging library.
 func (e *ErrorT) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("message", e.message)
 	enc.AddString("error", e.Error())
+	enc.AddString("kind", e.kind.Hierarchy())
 
 	details := map[string]any{}
 	for k, v := range e.opts {
@@ -224,6 +255,12 @@ func (e *ErrorT) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	return nil
 }
 
+// Zap creates a zap.Field for logging an error using the zap logging library.
+// If the provided error is of type ErrorT, it logs the error as a zap object,
+// which includes detailed error information such as the message, kind, and options.
+// Otherwise, it logs the error using zap.Error, which captures the error message
+// and stack trace. This function is useful for integrating structured error logging
+// into applications using the zap logging framework.
 func Zap(err error) zap.Field {
 	if e, ok := err.(*ErrorT); ok {
 		return zap.Object("error", e)

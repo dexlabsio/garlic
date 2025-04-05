@@ -3,9 +3,9 @@ package errors
 import "fmt"
 
 var (
-	KindUnknownError = &Kind{Name: "Unknown"}
-	KindUserError    = &Kind{Name: "User"}
-	KindSystemError  = &Kind{Name: "System"}
+	KindUnknownError = &Kind{Name: "Unknown Error"}
+	KindUserError    = &Kind{Name: "User Error"}
+	KindSystemError  = &Kind{Name: "System Error"}
 )
 
 type Kind struct {
