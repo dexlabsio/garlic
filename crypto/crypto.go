@@ -29,13 +29,13 @@ func New(cfg *Config) *Crypto {
 func (c *Crypto) Encrypt(content []byte) (string, error) {
 	block, err := aes.NewCipher(c.generateAESKey())
 	if err != nil {
-		return "", errors.Propagate("failed to generate crypto cypher", err)
+		return "", errors.Propagate(err, "failed to generate crypto cypher")
 	}
 
 	// Generate a random initialization vector.
 	iv := make([]byte, aes.BlockSize)
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return "", errors.Propagate("failed to generate random initialization vector", err)
+		return "", errors.Propagate(err, "failed to generate random initialization vector")
 	}
 
 	// Pad the content to a multiple of the block size
@@ -57,16 +57,16 @@ func (c *Crypto) Encrypt(content []byte) (string, error) {
 func (c *Crypto) Decrypt(encodedText string) ([]byte, error) {
 	encrypted, err := base64.StdEncoding.DecodeString(encodedText)
 	if err != nil {
-		return nil, errors.Propagate("failed to decode base64 string", err)
+		return nil, errors.Propagate(err, "failed to decode base64 string")
 	}
 
 	block, err := aes.NewCipher(c.generateAESKey())
 	if err != nil {
-		return nil, errors.Propagate("failed to create new cipher", err)
+		return nil, errors.Propagate(err, "failed to create new cipher")
 	}
 
 	if len(encrypted) < aes.BlockSize {
-		return nil, errors.New("invalid ciphertext length")
+		return nil, errors.New(errors.KindSystem, "invalid ciphertext length")
 	}
 
 	iv := encrypted[:aes.BlockSize]

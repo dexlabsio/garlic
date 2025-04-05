@@ -13,13 +13,11 @@ func httpStatusFromError(err *errors.ErrorT) int {
 		panic("can't create an status for nil error")
 	}
 
-	var notFoundErr *NotFoundError
-	if errors.As(err, &notFoundErr) {
+	if errors.IsKind(err, NotFoundError) {
 		return http.StatusNotFound
 	}
 
-	var userErr *errors.UserError
-	if errors.As(err, &userErr) {
+	if errors.IsKind(err, NotFoundError) {
 		return http.StatusBadRequest
 	}
 
@@ -46,6 +44,7 @@ var (
 		http.StatusInternalServerError,
 		PayloadError{
 			Error: errors.New(
+				errors.KindSystemError,
 				"internal server error",
 				errors.Hint("internal server error, please contact the support"),
 			).DTO(),
@@ -57,6 +56,7 @@ var (
 		http.StatusInternalServerError,
 		PayloadError{
 			Error: errors.New(
+				errors.KindSystemError,
 				"unknown error",
 				errors.Hint("unknown error, please contact the support"),
 			).DTO(),

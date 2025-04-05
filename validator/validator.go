@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/dexlabsio/garlic/errors"
 	"github.com/dexlabsio/garlic/logging"
 	val "github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
@@ -80,7 +81,7 @@ func ParseValidationErrors(err error) error {
 	if !ok {
 	}
 
-	return NewValidationError("validation error", ValidationErrors(valErrs))
+	return errors.New(ValidationError, "validation error", ValidationErrors(valErrs))
 }
 
 // Global returns the singleton instance of the Validator.

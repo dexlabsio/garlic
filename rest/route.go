@@ -47,8 +47,7 @@ func ToHandler(f func(http.ResponseWriter, *http.Request) error) func(w http.Res
 		if err != nil {
 			l := request.GetLogger(r)
 
-			var userErr *errors.UserError
-			if errors.As(err, &userErr) {
+			if errors.IsKind(err, errors.KindUserError) {
 				l.Warn("[USER ERROR]", errors.Zap(err))
 			} else {
 				l.Error("[SYSTEM ERROR]", errors.Zap(err))
