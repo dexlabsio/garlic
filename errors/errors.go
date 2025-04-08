@@ -54,7 +54,15 @@ func Propagate(err error, message string, opts ...Opt) *ErrorT {
 		kind = kinder.Kind()
 	}
 
-	opts = append(opts, StackTrace(), RevTrace())
+	return PropagateAs(kind, err, message, opts...)
+}
+
+// PropagateAs creates a new ErrorT instance with a specified error kind, message, and options,
+// and wraps an existing error with this new instance. It appends additional options for
+// reverse trace and stack trace to the provided options, ensuring that the error context
+// is enriched with detailed tracing information. This function is useful for propagating
+// errors with a specific kind while maintaining comprehensive error tracking and debugging capabilities.
+func PropagateAs(kind *Kind, err error, message string, opts ...Opt) *ErrorT {
 	e := New(kind, message, opts...)
 	return e.wrap(err)
 }
@@ -71,6 +79,7 @@ func New(kind *Kind, message string, opts ...Opt) *ErrorT {
 		opts:    map[string]Opt{},
 	}
 
+	opts = append(opts, StackTrace(), RevTrace())
 	for _, opt := range opts {
 		e.insert(opt)
 	}

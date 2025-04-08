@@ -2,42 +2,42 @@ package errors
 
 const REDACTION_PLACEHOLDER = "****"
 
-type field struct {
-	key        string
-	value      any
-	visibility Visibility
+type FieldT struct {
+	key   string
+	value any
 }
 
-func newField(key string, value any, v Visibility) *field {
-	return &field{
-		key:        key,
-		value:      value,
-		visibility: v,
+// Field creates a new Entry with the specified key and value.
+// This function is used to encapsulate key-value pairs, which can be
+// utilized for logging or error reporting purposes. The returned Entry
+// implements the necessary interface to be compatible with the error
+// handling and logging system, allowing for structured data to be
+// associated with errors or log entries.
+func Field(key string, value any) Entry {
+	return &FieldT{
+		key:   key,
+		value: value,
 	}
 }
 
-// Field creates a new field with the given key and value,
-// setting its visibility to PUBLIC. This function is used to
-// create key-value pairs that can be attached to errors for
-// additional context or metadata.
-func Field(key string, value any) *field {
-	return newField(key, value, PUBLIC)
+func (f *FieldT) Key() string {
+	return f.key
 }
 
-// RField creates a new field with the given key and value,
-// setting its visibility to RESTRICT. This function is used to
-// create key-value pairs that can be attached to errors for
-// additional context or metadata, but with restricted visibility.
-func RField(key string, value any) *field {
-	return newField(key, value, RESTRICT)
+func (f *FieldT) Value() any {
+	return f.value
+}
+
+func (f *FieldT) Insert(other Entry) Entry {
+	return f
 }
 
 // RedactedString creates a partially visible string value for debugging purposes,
 // adaptively showing approximately 1/3 of the value while protecting sensitive data.
-func RedactedString(key, value string) *field {
+func RedactedString(key, value string) Entry {
 	length := len(value)
 	if length < 5 {
-		return newField(key, REDACTION_PLACEHOLDER, RESTRICT)
+		return Field(key, REDACTION_PLACEHOLDER)
 	}
 
 	// shows 1/3 of the content, half in the beggining, half in the end
@@ -50,21 +50,5 @@ func RedactedString(key, value string) *field {
 	suffix := value[length-visibleChars:]
 	redactedValue := prefix + REDACTION_PLACEHOLDER + suffix
 
-	return newField(key, redactedValue, RESTRICT)
-}
-
-func (h *field) Key() string {
-	return h.key
-}
-
-func (h *field) Value() any {
-	return h.value
-}
-
-func (h *field) Visibility() Visibility {
-	return h.visibility
-}
-
-func (h *field) Insert(other Opt) Opt {
-	return h
+	return Field(key, redactedValue)
 }
