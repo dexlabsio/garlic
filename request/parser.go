@@ -6,6 +6,7 @@ import (
 
 	"github.com/dexlabsio/garlic/crypto"
 	"github.com/dexlabsio/garlic/errors"
+	"github.com/dexlabsio/garlic/rest"
 	"github.com/dexlabsio/garlic/validator"
 )
 
@@ -25,20 +26,22 @@ func DecodeRequestBody[T any](r *http.Request, form T) error {
 	if r.ContentLength == 0 {
 		l.Warn("Empty request body")
 	} else if err := json.NewDecoder(r.Body).Decode(form); err != nil {
-		return errors.Propagate(err,
+		return errors.PropagateAs(
+			InvalidRequestError,
+			err,
 			"invalid request body",
 			errors.Hint(
-				"Something may be wrong with formatting or the content of the request body",
+				"something may be wrong with formatting or the content of the request body",
 			),
-		).As(InvalidRequestError)
+			rest.StatusCode(http.StatusBadRequest),
+		)
 	}
 
 	if err := ValidateForm(form); err != nil {
-		return errors.Propagate(err,
+		return errors.Propagate(
+			err,
 			"failed to validate form",
-			errors.Hint(
-				"Please, verify the correctness of the fields",
-			),
+			rest.StatusCode(http.StatusBadRequest),
 		)
 	}
 
@@ -47,7 +50,13 @@ func DecodeRequestBody[T any](r *http.Request, form T) error {
 
 func ValidateForm[T any](form T) error {
 	if err := validator.Global().Struct(form); err != nil {
-		return validator.ParseValidationErrors(err)
+		return errors.Propagate(
+			validator.ParseValidationErrors(err),
+			"failed to validate form",
+			errors.Hint(
+				"please, verify the correctness of the fields",
+			),
+		)
 	}
 
 	return nil

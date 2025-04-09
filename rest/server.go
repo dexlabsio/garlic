@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/dexlabsio/garlic/logging"
-	"github.com/dexlabsio/garlic/middleware"
 	chi "github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -17,15 +16,11 @@ type Server struct {
 	router chi.Router
 }
 
-func NewServer(name string) *Server {
+func NewServer(name string, middlewares ...func(http.Handler) http.Handler) *Server {
 	router := chi.NewRouter()
 
 	// Setup middlewares for API endpoints
-	router.Use(
-		middleware.ContentTypeJson,
-		middleware.MetricsMonitor,
-		middleware.Logging,
-	)
+	router.Use(middlewares...)
 
 	return &Server{
 		Name:   name,

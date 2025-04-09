@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/dexlabsio/garlic/errors"
-	"github.com/dexlabsio/garlic/request"
+	"github.com/dexlabsio/garlic/logging"
 )
 
 type RouteOptions int
@@ -45,7 +45,8 @@ func ToHandler(f func(http.ResponseWriter, *http.Request) error) func(w http.Res
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := f(w, r)
 		if err != nil {
-			l := request.GetLogger(r)
+			ctx := r.Context()
+			l := logging.GetLoggerFromContext(ctx)
 
 			if errors.IsKind(err, errors.KindUserError) {
 				l.Warn("[USER ERROR]", errors.Zap(err))

@@ -73,13 +73,21 @@ func PropagateAs(kind *Kind, err error, message string, opts ...Opt) *ErrorT {
 // essential for constructing error objects with additional context and metadata, which can
 // be used for detailed error reporting and handling.
 func New(kind *Kind, message string, opts ...Opt) *ErrorT {
+	opts = append(opts, StackTrace(), RevTrace())
+	return Raw(kind, message, opts...)
+}
+
+// Raw creates a new instance of ErrorT with the specified kind, message, and options.
+// Unlike the New function, it does not append additional options for stack trace or reverse trace.
+// This function is useful when you want to create an error object without automatically
+// adding tracing information, allowing for more control over the error's metadata and context.
+func Raw(kind *Kind, message string, opts ...Opt) *ErrorT {
 	e := ErrorT{
 		kind:    kind,
 		message: message,
 		opts:    map[string]Opt{},
 	}
 
-	opts = append(opts, StackTrace(), RevTrace())
 	for _, opt := range opts {
 		e.insert(opt)
 	}
@@ -87,19 +95,29 @@ func New(kind *Kind, message string, opts ...Opt) *ErrorT {
 	return &e
 }
 
-// From creates a new ErrorT instance from an existing error, adding a custom message
-// and additional options. It wraps the given error with the newly created ErrorT
-// instance, allowing for enhanced error handling and context propagation. This function
-// is useful for converting standard errors into ErrorT instances with more detailed
-// information and metadata.
-func From(err error, message string, opts ...Opt) *ErrorT {
+// From creates a new ErrorT instance from an existing error, using the error's
+// message and kind (if available) as the basis for the new instance. It allows
+// for additional options to be specified, which are inserted into the new ErrorT
+// instance. This function is useful for converting standard errors into ErrorT
+// instances, enabling enhanced error tracking and handling with additional context
+// and metadata.
+func From(err error, opts ...Opt) *ErrorT {
 	kind := KindUnknownError
 	if kinder, ok := err.(Error); ok {
 		kind = kinder.Kind()
 	}
 
-	e := New(kind, message, opts...)
+	e := Raw(kind, err.Error(), opts...)
 	return e.wrap(err)
+}
+
+// Find retrieves an option from the ErrorT instance's options map using the specified key.
+// It returns the option and a boolean indicating whether the option was found. This method
+// is useful for accessing specific error metadata or context that has been stored in the
+// options map, allowing for detailed inspection and handling of error-related information.
+func (e *ErrorT) Find(key string) (opt Opt, ok bool) {
+	opt, ok = e.opts[key]
+	return
 }
 
 // Kind returns the kind of the ErrorT instance.
@@ -219,15 +237,16 @@ func (e *ErrorT) Error() string {
 }
 
 // DTO converts the ErrorT instance into a map suitable for data transfer objects (DTOs).
-// This method constructs a map containing the error message and kind hierarchy, and
+// This method constructs a DTO object containing the error message and kind hierarchy, and
 // includes additional details from the options map if they are marked as PUBLIC visibility.
 // It ensures that only relevant and non-sensitive information is exposed, making it
 // suitable for returning error details in API responses or logs.
-func (e *ErrorT) DTO() map[string]any {
-	content := map[string]any{
-		"error": e.message,
-		"kind":  e.kind.Hierarchy(),
+func (e *ErrorT) DTO() *DTO {
+	content := &DTO{
+		Error: e.message,
+		Kind:  e.kind.Hierarchy(),
 	}
+
 	details := map[string]any{}
 	for k, v := range e.opts {
 		if v.Visibility() == PUBLIC {
@@ -238,7 +257,7 @@ func (e *ErrorT) DTO() map[string]any {
 	}
 
 	if len(details) > 0 {
-		content["details"] = details
+		content.Details = details
 	}
 
 	return content

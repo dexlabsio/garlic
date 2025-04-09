@@ -8,22 +8,6 @@ import (
 	"github.com/dexlabsio/garlic/errors"
 )
 
-func httpStatusFromError(err *errors.ErrorT) int {
-	if err == nil {
-		panic("can't create an status for nil error")
-	}
-
-	if errors.IsKind(err, NotFoundError) {
-		return http.StatusNotFound
-	}
-
-	return http.StatusBadRequest
-}
-
-type PayloadError struct {
-	Error map[string]any `json:"error"`
-}
-
 type PayloadMessage struct {
 	Message string `json:"message"`
 }
@@ -38,25 +22,21 @@ var (
 	// response and prevent leaking sensitive information
 	internalServerErrorResponse = WriteResponse(
 		http.StatusInternalServerError,
-		PayloadError{
-			Error: errors.New(
-				errors.KindSystemError,
-				"internal server error",
-				errors.Hint("internal server error, please contact the support"),
-			).DTO(),
-		},
+		errors.Raw(
+			errors.KindSystemError,
+			"internal server error",
+			errors.Hint("internal server error, please contact the support"),
+		).DTO(),
 	)
 
 	// This is a generic response for unknown errors
 	unknownErrorResponse = WriteResponse(
 		http.StatusInternalServerError,
-		PayloadError{
-			Error: errors.New(
-				errors.KindSystemError,
-				"unknown error",
-				errors.Hint("unknown error, please contact the support"),
-			).DTO(),
-		},
+		errors.Raw(
+			errors.KindSystemError,
+			"unknown error",
+			errors.Hint("unknown error, please contact the support"),
+		).DTO(),
 	)
 )
 
@@ -83,7 +63,7 @@ func WriteMessage(statusCode int, message string) *Response[PayloadMessage] {
 
 // WriteError is a helper function to create a response with a service error
 // or a generic error response if the error is not a service error
-func WriteError(err error) *Response[PayloadError] {
+func WriteError(err error) *Response[*errors.DTO] {
 	// Return unknown error if the callen didn't provide an error
 	if err == nil {
 		return unknownErrorResponse
@@ -95,8 +75,15 @@ func WriteError(err error) *Response[PayloadError] {
 		return internalServerErrorResponse
 	}
 
-	// Standardize the error output if the status of the error is 500, 401 or 403,
-	// this way we avoid leaking potential dangerous internal information
-	responseStatus := httpStatusFromError(usrErr)
-	return WriteResponse(responseStatus, PayloadError{Error: usrErr.DTO()})
+	statusCodeOpt, ok := usrErr.Find(StatusCodeOptKey)
+	if !ok {
+		return WriteResponse(http.StatusBadRequest, usrErr.DTO())
+	}
+
+	statusCode, ok := statusCodeOpt.(StatusCode)
+	if !ok {
+		panic("invalid status code opt")
+	}
+
+	return WriteResponse(int(statusCode), usrErr.DTO())
 }

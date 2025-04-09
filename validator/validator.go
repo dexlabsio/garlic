@@ -81,7 +81,11 @@ func ParseValidationErrors(err error) error {
 	if !ok {
 	}
 
-	return errors.New(ValidationError, "validation error", ValidationErrors(valErrs))
+	return errors.New(
+		ValidationError,
+		"validation error",
+		ValidationErrors(valErrs),
+	)
 }
 
 // Global returns the singleton instance of the Validator.

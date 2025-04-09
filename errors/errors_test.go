@@ -131,17 +131,12 @@ func TestPropagationOfUserScopeEntries(t *testing.T) {
 			}
 
 			dto := errt.DTO()
-			detailsDTO, ok := dto["details"]
-			if !ok {
-				t.Errorf("dto doesn't have an expected details field")
+
+			if dto.Details == nil {
+				t.Errorf("dto.details should not be nil")
 			}
 
-			details, ok := detailsDTO.(map[string]any)
-			if !ok {
-				t.Errorf("dto.details should be a `map[string]any`")
-			}
-
-			userDetailsDTO, ok := details["user"]
+			userDetailsDTO, ok := dto.Details["user"]
 			if !ok {
 				t.Errorf("dto.details doesn't have an expected user field")
 			}
