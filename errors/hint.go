@@ -22,6 +22,12 @@ func (h *hint) Visibility() Visibility {
 	return PUBLIC
 }
 
-func (h *hint) Insert(other Opt) Opt {
+func (h *hint) Insert(other Entry) Entry {
 	return h
+}
+
+func (h *hint) Opt() Opt {
+	return func(e *ErrorT) {
+		e.Insert(h)
+	}
 }

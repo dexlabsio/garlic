@@ -71,9 +71,9 @@ func TestPropagationOfUserScopeEntries(t *testing.T) {
 		FieldAPlus         = Field("testA", "A+")
 		FieldB             = Field("testB", "B")
 		FieldC             = Field("testC", "C")
-		ScopeA             = UserScope(FieldA)
-		ScopeAPlus         = UserScope(FieldAPlus)
-		ScopeBC            = UserScope(FieldB, FieldC)
+		ContextA           = Context(FieldA)
+		ContextAPlus       = Context(FieldAPlus)
+		ContextBC          = Context(FieldB, FieldC)
 	)
 
 	cases := []struct {
@@ -84,14 +84,14 @@ func TestPropagationOfUserScopeEntries(t *testing.T) {
 		{
 			title: "first level errors should propagate their fields",
 			fn: func() error {
-				return PropagateAs(KindBaseError, rootErr, "test error", ScopeA)
+				return PropagateAs(KindBaseError, rootErr, "test error", ContextA)
 			},
 			expectedFields: []Entry{FieldA},
 		},
 		{
 			title: "override errors should propagate previous error fields",
 			fn: func() error {
-				err := PropagateAs(KindBaseError, rootErr, "test error", ScopeA)
+				err := PropagateAs(KindBaseError, rootErr, "test error", ContextA)
 				return PropagateAs(KindOtherBaseError, err, "other test error")
 			},
 			expectedFields: []Entry{FieldA},
@@ -99,7 +99,7 @@ func TestPropagationOfUserScopeEntries(t *testing.T) {
 		{
 			title: "secondary level errors should propagate previous error fields",
 			fn: func() error {
-				err := PropagateAs(KindBaseError, rootErr, "test error", ScopeA)
+				err := PropagateAs(KindBaseError, rootErr, "test error", ContextA)
 				return Propagate(err, "other test error")
 			},
 			expectedFields: []Entry{FieldA},
@@ -107,16 +107,16 @@ func TestPropagationOfUserScopeEntries(t *testing.T) {
 		{
 			title: "secondary level errors should propagate previous error fields plus its own fields",
 			fn: func() error {
-				err := PropagateAs(KindBaseError, rootErr, "test error", ScopeA)
-				return Propagate(err, "other test error", ScopeBC)
+				err := PropagateAs(KindBaseError, rootErr, "test error", ContextA)
+				return Propagate(err, "other test error", ContextBC)
 			},
 			expectedFields: []Entry{FieldA, FieldB, FieldC},
 		},
 		{
 			title: "secondary level errors should override previous error fields with the same key",
 			fn: func() error {
-				err := PropagateAs(KindBaseError, rootErr, "test error", ScopeA)
-				return Propagate(err, "other test error", ScopeAPlus)
+				err := PropagateAs(KindBaseError, rootErr, "test error", ContextA)
+				return Propagate(err, "other test error", ContextAPlus)
 			},
 			expectedFields: []Entry{FieldAPlus},
 		},

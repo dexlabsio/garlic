@@ -8,10 +8,6 @@ const (
 	StatusCodeOptKey = "statuscode"
 )
 
-var (
-	NotFoundError = errors.NewKind("Not Found Error", errors.KindUserError)
-)
-
 // StatusCode is a custom type that implements several methods
 // to implement the Opt iface of the errors package. It provides
 // a way to represent and handle status codes with specific behaviors,
@@ -31,6 +27,12 @@ func (sc StatusCode) Visibility() errors.Visibility {
 	return errors.RESTRICT
 }
 
-func (sc StatusCode) Insert(opt errors.Opt) errors.Opt {
+func (sc StatusCode) Insert(opt errors.Entry) errors.Entry {
 	return sc
+}
+
+func (sc StatusCode) Opt() errors.Opt {
+	return func(e *errors.ErrorT) {
+		e.Insert(sc)
+	}
 }

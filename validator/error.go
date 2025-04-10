@@ -3,8 +3,8 @@ package validator
 import (
 	"fmt"
 
-	val "github.com/go-playground/validator/v10"
 	"github.com/dexlabsio/garlic/errors"
+	val "github.com/go-playground/validator/v10"
 )
 
 type validationErrors struct {
@@ -49,7 +49,7 @@ func (verrs *validationErrors) Visibility() errors.Visibility {
 	return errors.PUBLIC
 }
 
-func (verrs *validationErrors) Insert(other errors.Opt) errors.Opt {
+func (verrs *validationErrors) Insert(other errors.Entry) errors.Entry {
 	if other == nil {
 		return verrs
 	}

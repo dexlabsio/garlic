@@ -6,22 +6,28 @@ package errors
 // insert entries from another DictT instance. This structure is useful for
 // managing and aggregating key-value pairs in a structured manner.
 type DictT struct {
-	key     string
-	entries map[string]Entry
+	key        string
+	entries    map[string]Entry
+	visibility Visibility
 }
 
 // Dict creates a new instance of DictT with the specified key and entries.
 // It initializes the dictionary with the provided entries, allowing for the
 // management of key-value pairs. This function is useful for creating a structured
 // collection of entries that can be easily accessed and manipulated.
-func Dict(key string, entries ...Entry) *DictT {
+func Dict(key string, entries []Entry, opts ...EntryOpt) *DictT {
 	e := &DictT{
-		key:     key,
-		entries: make(map[string]Entry, len(entries)),
+		key:        key,
+		entries:    make(map[string]Entry, len(entries)),
+		visibility: PUBLIC,
 	}
 
 	for _, entry := range entries {
 		e.Add(entry)
+	}
+
+	for _, opt := range opts {
+		opt(e)
 	}
 
 	return e
@@ -68,6 +74,11 @@ func (e *DictT) Key() string {
 func (e *DictT) Value() any {
 	res := map[string]any{}
 	for _, entry := range e.entries {
+		// Don't publish private values when dict is restricted
+		if e.Visibility() == PUBLIC && entry.Visibility() != PUBLIC {
+			continue
+		}
+
 		res[entry.Key()] = entry.Value()
 	}
 
@@ -76,6 +87,26 @@ func (e *DictT) Value() any {
 	}
 
 	return res
+}
+
+// Visibility returns the visibility level of the DictT instance.
+// This visibility level determines the access control or scope
+// of the dictionary, indicating whether it is publicly accessible
+// or restricted. This method is useful for retrieving the current
+// visibility setting, which can be used to enforce access policies
+// or modify behavior based on the visibility state.
+func (e *DictT) Visibility() Visibility {
+	return e.visibility
+}
+
+// SetVisibility sets the visibility level of the DictT instance to the specified
+// value. This method allows for changing the access control or scope of the
+// dictionary, enabling dynamic adjustments to its visibility state. By modifying
+// the visibility, you can control whether the dictionary is publicly accessible
+// or restricted, which is useful for enforcing access policies or adapting
+// behavior based on the current visibility setting.
+func (e *DictT) SetVisibility(v Visibility) {
+	e.visibility = v
 }
 
 // Insert merges entries from another DictT instance into the current one.

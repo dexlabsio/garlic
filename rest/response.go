@@ -75,12 +75,12 @@ func WriteError(err error) *Response[*errors.DTO] {
 		return internalServerErrorResponse
 	}
 
-	statusCodeOpt, ok := usrErr.Find(StatusCodeOptKey)
+	statusCodeEntry, ok := usrErr.Find(StatusCodeOptKey)
 	if !ok {
 		return WriteResponse(http.StatusBadRequest, usrErr.DTO())
 	}
 
-	statusCode, ok := statusCodeOpt.(StatusCode)
+	statusCode, ok := statusCodeEntry.(StatusCode)
 	if !ok {
 		panic("invalid status code opt")
 	}

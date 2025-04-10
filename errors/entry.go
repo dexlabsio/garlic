@@ -1,10 +1,5 @@
 package errors
 
-import (
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-)
-
 type Entry interface {
 	// Insert merges the current Entry with another Entry, allowing for
 	// the combination or replacement of values. This method is useful
@@ -17,32 +12,25 @@ type Entry interface {
 
 	// Value is any object suitable to be present in DTOs or Logs.
 	Value() any
+
+	// Visibility says if a specific Opt should be returned in DTO.
+	Visibility() Visibility
 }
 
-type EntryList []Entry
+type EntryOpt func(Entry)
 
-func Entries(entries ...Entry) EntryList {
-	return entries
+type VisibilitySetter interface {
+	SetVisibility(Visibility)
 }
 
-func (el EntryList) MarshalLogObject(enc zapcore.ObjectEncoder) error {
-	for _, v := range el {
-		if v.Value() != nil {
-			enc.AddReflected(v.Key(), v.Value())
-		}
+func Restrict(e Entry) {
+	if vs, ok := e.(VisibilitySetter); ok {
+		vs.SetVisibility(RESTRICT)
 	}
-
-	return nil
 }
 
-func (el EntryList) Zap() zap.Field {
-	return zap.Object("context", el)
-}
-
-func (el EntryList) AsUserScope() *ScopeT {
-	return UserScope(el...)
-}
-
-func (el EntryList) AsSystemScope() *ScopeT {
-	return SystemScope(el...)
+func Public(e Entry) {
+	if vs, ok := e.(VisibilitySetter); ok {
+		vs.SetVisibility(PUBLIC)
+	}
 }

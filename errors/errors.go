@@ -14,22 +14,10 @@ const (
 	RESTRICT
 )
 
-type Opt interface {
-	// Key controls the name of the key that will appear for the
-	// user and developer in DTOs and Logs.
-	Key() string
+type Opt func(*ErrorT)
 
-	// Value is any object suitable to be present in DTOs or Logs.
-	Value() any
-
-	// Visibility says if a specific Opt should be returned in DTO.
-	Visibility() Visibility
-
-	// Insert controls how a new value is inserted in the map of
-	// existing Opts. For example, if a specific opt value is inserted
-	// but the key already exists, this function controls if the new
-	// should be aggregated or replaced.
-	Insert(other Opt) Opt
+type Opter interface {
+	Opt() Opt
 }
 
 type Error interface {
@@ -40,7 +28,7 @@ type ErrorT struct {
 	kind    *Kind
 	message string
 	cause   error
-	opts    map[string]Opt
+	entries map[string]Entry
 }
 
 // Propagate creates a new ErrorT instance with a base error kind, message, and options,
@@ -48,7 +36,7 @@ type ErrorT struct {
 // reverse trace and stack trace to the provided options, ensuring that the error context
 // is enriched with detailed tracing information. This function is useful for propagating
 // errors while maintaining comprehensive error tracking and debugging capabilities.
-func Propagate(err error, message string, opts ...Opt) *ErrorT {
+func Propagate(err error, message string, opts ...Opter) *ErrorT {
 	kind := KindUnknownError
 	if kinder, ok := err.(Error); ok {
 		kind = kinder.Kind()
@@ -62,7 +50,7 @@ func Propagate(err error, message string, opts ...Opt) *ErrorT {
 // reverse trace and stack trace to the provided options, ensuring that the error context
 // is enriched with detailed tracing information. This function is useful for propagating
 // errors with a specific kind while maintaining comprehensive error tracking and debugging capabilities.
-func PropagateAs(kind *Kind, err error, message string, opts ...Opt) *ErrorT {
+func PropagateAs(kind *Kind, err error, message string, opts ...Opter) *ErrorT {
 	e := New(kind, message, opts...)
 	return e.wrap(err)
 }
@@ -72,7 +60,7 @@ func PropagateAs(kind *Kind, err error, message string, opts ...Opt) *ErrorT {
 // options by inserting them into the opts map using the insert method. This function is
 // essential for constructing error objects with additional context and metadata, which can
 // be used for detailed error reporting and handling.
-func New(kind *Kind, message string, opts ...Opt) *ErrorT {
+func New(kind *Kind, message string, opts ...Opter) *ErrorT {
 	opts = append(opts, StackTrace(), RevTrace())
 	return Raw(kind, message, opts...)
 }
@@ -81,18 +69,18 @@ func New(kind *Kind, message string, opts ...Opt) *ErrorT {
 // Unlike the New function, it does not append additional options for stack trace or reverse trace.
 // This function is useful when you want to create an error object without automatically
 // adding tracing information, allowing for more control over the error's metadata and context.
-func Raw(kind *Kind, message string, opts ...Opt) *ErrorT {
-	e := ErrorT{
+func Raw(kind *Kind, message string, opts ...Opter) *ErrorT {
+	e := &ErrorT{
 		kind:    kind,
 		message: message,
-		opts:    map[string]Opt{},
+		entries: map[string]Entry{},
 	}
 
-	for _, opt := range opts {
-		e.insert(opt)
+	for _, opter := range opts {
+		opter.Opt()(e)
 	}
 
-	return &e
+	return e
 }
 
 // From creates a new ErrorT instance from an existing error, using the error's
@@ -101,7 +89,7 @@ func Raw(kind *Kind, message string, opts ...Opt) *ErrorT {
 // instance. This function is useful for converting standard errors into ErrorT
 // instances, enabling enhanced error tracking and handling with additional context
 // and metadata.
-func From(err error, opts ...Opt) *ErrorT {
+func From(err error, opts ...Opter) *ErrorT {
 	kind := KindUnknownError
 	if kinder, ok := err.(Error); ok {
 		kind = kinder.Kind()
@@ -115,8 +103,8 @@ func From(err error, opts ...Opt) *ErrorT {
 // It returns the option and a boolean indicating whether the option was found. This method
 // is useful for accessing specific error metadata or context that has been stored in the
 // options map, allowing for detailed inspection and handling of error-related information.
-func (e *ErrorT) Find(key string) (opt Opt, ok bool) {
-	opt, ok = e.opts[key]
+func (e *ErrorT) Find(key string) (entry Entry, ok bool) {
+	entry, ok = e.entries[key]
 	return
 }
 
@@ -146,10 +134,10 @@ func (e *ErrorT) As(kind *Kind) *ErrorT {
 // options, facilitating more detailed error reporting and handling. It
 // returns a new ErrorT instance that includes both the original and
 // context-specific options.
-func (e *ErrorT) With(ctx *context) *ErrorT {
+func (e *ErrorT) With(opts ...Opter) *ErrorT {
 	err := e.Copy()
-	for _, opt := range ctx.opts {
-		err.insert(opt)
+	for _, opter := range opts {
+		opter.Opt()(err)
 	}
 
 	return err
@@ -165,11 +153,11 @@ func (e *ErrorT) Copy() *ErrorT {
 		kind:    e.kind,
 		message: e.message,
 		cause:   e.cause,
-		opts:    map[string]Opt{},
+		entries: make(map[string]Entry, len(e.entries)),
 	}
 
-	for _, opt := range e.opts {
-		err.insert(opt)
+	for k, entry := range e.entries {
+		err.entries[k] = entry
 	}
 
 	return err
@@ -186,8 +174,8 @@ func (e *ErrorT) wrap(other error) *ErrorT {
 	}
 
 	if o, ok := other.(*ErrorT); ok {
-		for _, opt := range o.opts {
-			e.insert(opt)
+		for _, entry := range o.entries {
+			e.Insert(entry)
 		}
 	}
 
@@ -203,21 +191,21 @@ func (e *ErrorT) Unwrap() error {
 	return e.cause
 }
 
-// insert controls when to call opt.Insert for a new opt.
+// Insert controls when to call opt.Insert for a new opt.
 // If the key is missing or its value is nil, we just insert
 // the given opt directly. If it exists, we call the respective
 // Insert function to handle the newly introduced object.
-func (e *ErrorT) insert(opt Opt) {
-	if opt == nil {
+func (e *ErrorT) Insert(entry Entry) {
+	if entry == nil {
 		return
 	}
 
-	key := opt.Key()
-	current, ok := e.opts[key]
+	key := entry.Key()
+	current, ok := e.entries[key]
 	if !ok || current == nil {
-		e.opts[key] = opt
+		e.entries[key] = entry
 	} else {
-		e.opts[key] = current.Insert(opt)
+		e.entries[key] = current.Insert(entry)
 	}
 }
 
@@ -248,7 +236,7 @@ func (e *ErrorT) DTO() *DTO {
 	}
 
 	details := map[string]any{}
-	for k, v := range e.opts {
+	for k, v := range e.entries {
 		if v.Visibility() == PUBLIC {
 			if v.Value() != nil {
 				details[k] = v.Value()
@@ -273,7 +261,7 @@ func (e *ErrorT) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("kind", e.kind.Hierarchy())
 
 	details := map[string]any{}
-	for k, v := range e.opts {
+	for k, v := range e.entries {
 		if v.Value() != nil {
 			details[k] = v.Value()
 		}

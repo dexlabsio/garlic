@@ -81,10 +81,16 @@ func ParseValidationErrors(err error) error {
 	if !ok {
 	}
 
-	return errors.New(
+	return errors.PropagateAs(
 		ValidationError,
+		err,
 		"validation error",
-		ValidationErrors(valErrs),
+		errors.Hint(
+			"One or more fields of the form were completed incorrectly. Please, fix the errors and try again.",
+		),
+		errors.Context(
+			ValidationErrors(valErrs),
+		),
 	)
 }
 

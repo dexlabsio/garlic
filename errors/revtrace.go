@@ -34,7 +34,7 @@ func (rt *revTrace) Visibility() Visibility {
 	return RESTRICT
 }
 
-func (rt *revTrace) Insert(other Opt) Opt {
+func (rt *revTrace) Insert(other Entry) Entry {
 	if other == nil {
 		return rt
 	}
@@ -47,6 +47,12 @@ func (rt *revTrace) Insert(other Opt) Opt {
 	rt.revTrace = fmt.Sprintf("%s\n%s", rt.revTrace, otherRevTrace.revTrace)
 
 	return rt
+}
+
+func (rt *revTrace) Opt() Opt {
+	return func(e *ErrorT) {
+		e.Insert(rt)
+	}
 }
 
 // findCaller iterates over the stack frames and returns the first frame

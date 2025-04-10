@@ -26,6 +26,12 @@ func (st *stackTrace) Visibility() Visibility {
 	return RESTRICT
 }
 
-func (st *stackTrace) Insert(other Opt) Opt {
+func (st *stackTrace) Insert(other Entry) Entry {
 	return other
+}
+
+func (st *stackTrace) Opt() Opt {
+	return func(e *ErrorT) {
+		e.Insert(st)
+	}
 }
