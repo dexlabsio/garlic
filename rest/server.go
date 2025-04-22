@@ -65,7 +65,7 @@ func (s *Server) Listen(ctx context.Context, bind string) <-chan error {
 		defer close(errCh)
 
 		go func() {
-			l.With(zap.String("bind", bind)).Info("Listening.")
+			l.Info("Listening.", zap.String("bind", bind), zap.String("server", s.Name))
 			err := http.ListenAndServe(bind, s.Router())
 			errCh <- err
 		}()
