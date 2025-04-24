@@ -44,6 +44,12 @@ func (f *FieldT) Insert(other Entry) Entry {
 	return f
 }
 
+// SetVisibility implements the interface VisibilitySetter so that we can
+// use EntryOpt Restrict and Public to change the visibility of the field.
+func (f *FieldT) SetVisibility(v Visibility) {
+	f.visibility = v
+}
+
 // RedactedString creates a partially visible string value for debugging purposes,
 // adaptively showing approximately 1/3 of the value while protecting sensitive data.
 func RedactedString(key, value string, opts ...EntryOpt) Entry {

@@ -74,8 +74,8 @@ func (e *DictT) Key() string {
 func (e *DictT) Value() any {
 	res := map[string]any{}
 	for _, entry := range e.entries {
-		// Don't publish private values when dict is restricted
-		if e.Visibility() == PUBLIC && entry.Visibility() != PUBLIC {
+		// Don't publish restrict values when dict is public
+		if e.Visibility() == PUBLIC && entry.Visibility() == RESTRICT {
 			continue
 		}
 
