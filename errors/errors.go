@@ -3,6 +3,7 @@ package errors
 import (
 	"fmt"
 
+	"dario.cat/mergo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -25,10 +26,11 @@ type Error interface {
 }
 
 type ErrorT struct {
-	kind    *Kind
-	message string
-	cause   error
-	entries map[string]Entry
+	kind      *Kind
+	message   string
+	cause     error
+	entries   map[string]Entry
+	extension map[string]any
 }
 
 // Propagate creates a new ErrorT instance with a base error kind, message, and options,
@@ -177,6 +179,8 @@ func (e *ErrorT) wrap(other error) *ErrorT {
 		for _, entry := range o.entries {
 			e.Insert(entry)
 		}
+
+		e.extension = o.extension
 	}
 
 	e.cause = other
@@ -244,11 +248,21 @@ func (e *ErrorT) DTO() *DTO {
 		}
 	}
 
+	mergeMap(details, e.extension)
+
 	if len(details) > 0 {
 		content.Details = details
 	}
 
 	return content
+}
+
+// mergeMap merges map b into a, overriding scalar values and appending slices.
+func mergeMap(dst, src map[string]any) error {
+	return mergo.Merge(&dst, src,
+		mergo.WithOverride,    // b overwrites a on conflicts
+		mergo.WithAppendSlice, // for slices, append instead of replace
+	)
 }
 
 // MarshalLogObject encodes the ErrorT instance into a zapcore.ObjectEncoder for structured logging.

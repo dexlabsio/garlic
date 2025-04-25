@@ -2,10 +2,16 @@ package errors
 
 import "fmt"
 
+const KIND_SEPARATOR = "::"
+
 var (
 	KindUnknownError = &Kind{Name: "Unknown Error"}
 	KindUserError    = &Kind{Name: "User Error"}
 	KindSystemError  = &Kind{Name: "System Error"}
+
+	KindExternalUnknownError = &Kind{Name: "External Unknown Error", Parent: KindUnknownError}
+	KindExternalUserError    = &Kind{Name: "External User Error", Parent: KindUserError}
+	KindExternalSystemError  = &Kind{Name: "External System Error", Parent: KindSystemError}
 )
 
 type Kind struct {
@@ -25,7 +31,7 @@ func (k *Kind) Hierarchy() string {
 		return k.Name
 	}
 
-	return fmt.Sprintf("%s::%s", k.Name, k.Parent.Hierarchy())
+	return fmt.Sprintf("%s%s%s", k.Name, KIND_SEPARATOR, k.Parent.Hierarchy())
 }
 
 func (k *Kind) Is(other *Kind) bool {

@@ -1,5 +1,7 @@
 package errors
 
+import "strings"
+
 type Transferable interface {
 	DTO() *DTO
 }
@@ -17,4 +19,27 @@ func NewDTO(err error) *DTO {
 	}
 
 	return e.DTO()
+}
+
+func (dto *DTO) Parse() *ErrorT {
+	kind := dto.DecodeKind()
+	err := New(kind, dto.Error)
+	err.extension = dto.Details
+
+	return err
+}
+
+func (dto *DTO) DecodeKind() *Kind {
+	kindHierarchy := strings.Split(dto.Kind, KIND_SEPARATOR)
+
+	for _, k := range kindHierarchy {
+		switch k {
+		case KindUserError.Name:
+			return KindExternalUserError
+		case KindSystemError.Name:
+			return KindExternalSystemError
+		}
+	}
+
+	return KindExternalUnknownError
 }
