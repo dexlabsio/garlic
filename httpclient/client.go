@@ -40,8 +40,8 @@ func Delete(ctx context.Context, url string) (*http.Response, error) {
 
 func request(ctx context.Context, method, url string, data any) (*http.Response, error) {
 	ectx := errors.Context(
-		errors.Field("http_method", method, errors.Restrict),
-		errors.Field("http_url", url, errors.Restrict),
+		errors.Field("http_method", method),
+		errors.Field("http_url", url),
 	)
 
 	l := logging.GetLoggerFromContext(ctx).With(ectx.Zap())

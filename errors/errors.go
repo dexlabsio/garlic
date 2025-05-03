@@ -3,45 +3,45 @@ package errors
 import (
 	"fmt"
 
-	"dario.cat/mergo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-type Visibility uint8
-
-const (
-	PUBLIC Visibility = iota
-	RESTRICT
-)
-
-type Opt func(*ErrorT)
-
-type Opter interface {
-	Opt() Opt
+type Opt interface {
+	Opt(e *ErrorT)
 }
 
-type Error interface {
-	Kind() *Kind
+type Troubleshooting struct {
+	ReverseTrace []string
+	StackTrace   string
+	Context      map[string]any
+}
+
+func NewTroubleshooting() *Troubleshooting {
+	return &Troubleshooting{
+		ReverseTrace: []string{},
+		StackTrace:   "",
+		Context:      map[string]any{},
+	}
 }
 
 type ErrorT struct {
-	kind      *Kind
-	message   string
-	cause     error
-	entries   map[string]Entry
-	extension map[string]any
+	kind            *Kind
+	message         string
+	cause           error
+	Details         map[string]any
+	Troubleshooting *Troubleshooting
 }
 
-// Propagate creates a new ErrorT instance with a base error kind, message, and options,
-// and wraps an existing error with this new instance. It appends additional options for
-// reverse trace and stack trace to the provided options, ensuring that the error context
-// is enriched with detailed tracing information. This function is useful for propagating
-// errors while maintaining comprehensive error tracking and debugging capabilities.
-func Propagate(err error, message string, opts ...Opter) *ErrorT {
-	kind := KindUnknownError
-	if kinder, ok := err.(Error); ok {
-		kind = kinder.Kind()
+// Propagate creates a new ErrorT instance with a default error kind (KindError),
+// a specified message, and additional options. It wraps an existing error with
+// this new instance, allowing for enhanced error tracking and debugging. This
+// function is useful for propagating errors while maintaining comprehensive
+// error context and metadata.
+func Propagate(err error, message string, opts ...Opt) *ErrorT {
+	kind := KindError
+	if e, ok := err.(*ErrorT); ok {
+		kind = e.Kind()
 	}
 
 	return PropagateAs(kind, err, message, opts...)
@@ -52,9 +52,9 @@ func Propagate(err error, message string, opts ...Opter) *ErrorT {
 // reverse trace and stack trace to the provided options, ensuring that the error context
 // is enriched with detailed tracing information. This function is useful for propagating
 // errors with a specific kind while maintaining comprehensive error tracking and debugging capabilities.
-func PropagateAs(kind *Kind, err error, message string, opts ...Opter) *ErrorT {
-	e := New(kind, message, opts...)
-	return e.wrap(err)
+func PropagateAs(kind *Kind, err error, message string, opts ...Opt) *ErrorT {
+	opts = append(opts, RevTrace())
+	return From(kind, err, message, opts...)
 }
 
 // New creates a new instance of ErrorT with the specified kind, message, and options.
@@ -62,8 +62,8 @@ func PropagateAs(kind *Kind, err error, message string, opts ...Opter) *ErrorT {
 // options by inserting them into the opts map using the insert method. This function is
 // essential for constructing error objects with additional context and metadata, which can
 // be used for detailed error reporting and handling.
-func New(kind *Kind, message string, opts ...Opter) *ErrorT {
-	opts = append(opts, StackTrace(), RevTrace())
+func New(kind *Kind, message string, opts ...Opt) *ErrorT {
+	opts = append(opts, RevTrace())
 	return Raw(kind, message, opts...)
 }
 
@@ -71,15 +71,16 @@ func New(kind *Kind, message string, opts ...Opter) *ErrorT {
 // Unlike the New function, it does not append additional options for stack trace or reverse trace.
 // This function is useful when you want to create an error object without automatically
 // adding tracing information, allowing for more control over the error's metadata and context.
-func Raw(kind *Kind, message string, opts ...Opter) *ErrorT {
+func Raw(kind *Kind, message string, opts ...Opt) *ErrorT {
 	e := &ErrorT{
-		kind:    kind,
-		message: message,
-		entries: map[string]Entry{},
+		kind:            kind,
+		message:         message,
+		Details:         map[string]any{},
+		Troubleshooting: NewTroubleshooting(),
 	}
 
-	for _, opter := range opts {
-		opter.Opt()(e)
+	for _, opt := range opts {
+		opt.Opt(e)
 	}
 
 	return e
@@ -91,23 +92,21 @@ func Raw(kind *Kind, message string, opts ...Opter) *ErrorT {
 // instance. This function is useful for converting standard errors into ErrorT
 // instances, enabling enhanced error tracking and handling with additional context
 // and metadata.
-func From(err error, opts ...Opter) *ErrorT {
-	kind := KindUnknownError
-	if kinder, ok := err.(Error); ok {
-		kind = kinder.Kind()
+func From(kind *Kind, err error, message string, opts ...Opt) *ErrorT {
+	e := &ErrorT{
+		kind:            kind,
+		message:         message,
+		Details:         map[string]any{},
+		Troubleshooting: NewTroubleshooting(),
 	}
 
-	e := Raw(kind, err.Error(), opts...)
-	return e.wrap(err)
-}
+	e.wrap(err)
 
-// Find retrieves an option from the ErrorT instance's options map using the specified key.
-// It returns the option and a boolean indicating whether the option was found. This method
-// is useful for accessing specific error metadata or context that has been stored in the
-// options map, allowing for detailed inspection and handling of error-related information.
-func (e *ErrorT) Find(key string) (entry Entry, ok bool) {
-	entry, ok = e.entries[key]
-	return
+	for _, opt := range opts {
+		opt.Opt(e)
+	}
+
+	return e
 }
 
 // Kind returns the kind of the ErrorT instance.
@@ -117,52 +116,6 @@ func (e *ErrorT) Find(key string) (entry Entry, ok bool) {
 // specific type of error encountered.
 func (e *ErrorT) Kind() *Kind {
 	return e.kind
-}
-
-// As sets the kind of the ErrorT instance to the specified kind.
-// This method allows for modifying the error kind of an existing ErrorT
-// instance, enabling dynamic categorization of errors based on their
-// nature or origin. It returns the modified ErrorT instance, allowing
-// for method chaining.
-func (e *ErrorT) As(kind *Kind) *ErrorT {
-	err := e.Copy()
-	err.kind = kind
-	return err
-}
-
-// With creates a new ErrorT instance by copying the current ErrorT instance
-// and merging it with the options from the provided context. This method
-// allows for the augmentation of an existing error with additional context
-// options, facilitating more detailed error reporting and handling. It
-// returns a new ErrorT instance that includes both the original and
-// context-specific options.
-func (e *ErrorT) With(opts ...Opter) *ErrorT {
-	err := e.Copy()
-	for _, opter := range opts {
-		opter.Opt()(err)
-	}
-
-	return err
-}
-
-// Copy creates a deep copy of the current ErrorT instance, including its kind,
-// message, cause, and options. This method is useful for duplicating an error
-// object while preserving its original state and metadata, allowing for
-// independent modifications or further processing without affecting the
-// original error instance.
-func (e *ErrorT) Copy() *ErrorT {
-	err := &ErrorT{
-		kind:    e.kind,
-		message: e.message,
-		cause:   e.cause,
-		entries: make(map[string]Entry, len(e.entries)),
-	}
-
-	for k, entry := range e.entries {
-		err.entries[k] = entry
-	}
-
-	return err
 }
 
 // wrap takes an existing error and wraps it with the current ErrorT instance,
@@ -176,11 +129,8 @@ func (e *ErrorT) wrap(other error) *ErrorT {
 	}
 
 	if o, ok := other.(*ErrorT); ok {
-		for _, entry := range o.entries {
-			e.Insert(entry)
-		}
-
-		e.extension = o.extension
+		e.Details = o.Details
+		e.Troubleshooting = o.Troubleshooting
 	}
 
 	e.cause = other
@@ -193,24 +143,6 @@ func (e *ErrorT) wrap(other error) *ErrorT {
 // in error handling workflows.
 func (e *ErrorT) Unwrap() error {
 	return e.cause
-}
-
-// Insert controls when to call opt.Insert for a new opt.
-// If the key is missing or its value is nil, we just insert
-// the given opt directly. If it exists, we call the respective
-// Insert function to handle the newly introduced object.
-func (e *ErrorT) Insert(entry Entry) {
-	if entry == nil {
-		return
-	}
-
-	key := entry.Key()
-	current, ok := e.entries[key]
-	if !ok || current == nil {
-		e.entries[key] = entry
-	} else {
-		e.entries[key] = current.Insert(entry)
-	}
 }
 
 // Error returns the error message for the ErrorT instance.
@@ -233,36 +165,13 @@ func (e *ErrorT) Error() string {
 // includes additional details from the options map if they are marked as PUBLIC visibility.
 // It ensures that only relevant and non-sensitive information is exposed, making it
 // suitable for returning error details in API responses or logs.
-func (e *ErrorT) DTO() *DTO {
-	content := &DTO{
-		Error: e.message,
-		Kind:  e.kind.Hierarchy(),
+func (e *ErrorT) ErrorDTO() *DTO {
+	return &DTO{
+		Name:    e.kind.FQN(),
+		Error:   e.message,
+		Code:    e.kind.Code,
+		Details: e.Details,
 	}
-
-	details := map[string]any{}
-	for k, v := range e.entries {
-		if v.Visibility() == PUBLIC {
-			if v.Value() != nil {
-				details[k] = v.Value()
-			}
-		}
-	}
-
-	mergeMap(details, e.extension)
-
-	if len(details) > 0 {
-		content.Details = details
-	}
-
-	return content
-}
-
-// mergeMap merges map b into a, overriding scalar values and appending slices.
-func mergeMap(dst, src map[string]any) error {
-	return mergo.Merge(&dst, src,
-		mergo.WithOverride,    // b overwrites a on conflicts
-		mergo.WithAppendSlice, // for slices, append instead of replace
-	)
 }
 
 // MarshalLogObject encodes the ErrorT instance into a zapcore.ObjectEncoder for structured logging.
@@ -272,16 +181,12 @@ func mergeMap(dst, src map[string]any) error {
 func (e *ErrorT) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("message", e.message)
 	enc.AddString("error", e.Error())
-	enc.AddString("kind", e.kind.Hierarchy())
+	enc.AddString("code", e.kind.Code)
+	enc.AddString("kind", e.kind.FQN())
+	enc.AddInt("error_status_code", e.kind.StatusCode())
+	enc.AddReflected("details", e.Details)
+	enc.AddReflected("troubleshooting", e.Troubleshooting)
 
-	details := map[string]any{}
-	for k, v := range e.entries {
-		if v.Value() != nil {
-			details[k] = v.Value()
-		}
-	}
-
-	enc.AddReflected("details", details)
 	return nil
 }
 

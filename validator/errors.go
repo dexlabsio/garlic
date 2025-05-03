@@ -5,5 +5,5 @@ import (
 )
 
 var (
-	ValidationError = errors.NewKind("Validation Error", errors.KindUserError)
+	KindValidationError = errors.Get("ValidationError")
 )

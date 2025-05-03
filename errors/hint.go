@@ -1,33 +1,17 @@
 package errors
 
+import "fmt"
+
 type hint struct {
 	message string
 }
 
-func Hint(message string) *hint {
+func Hint(template string, args ...any) *hint {
 	return &hint{
-		message: message,
+		message: fmt.Sprintf(template, args...),
 	}
 }
 
-func (h *hint) Key() string {
-	return "hint"
-}
-
-func (h *hint) Value() any {
-	return h.message
-}
-
-func (h *hint) Visibility() Visibility {
-	return PUBLIC
-}
-
-func (h *hint) Insert(other Entry) Entry {
-	return h
-}
-
-func (h *hint) Opt() Opt {
-	return func(e *ErrorT) {
-		e.Insert(h)
-	}
+func (h *hint) Opt(e *ErrorT) {
+	e.Details["hint"] = h.message
 }

@@ -22,37 +22,8 @@ func RevTrace() *revTrace {
 	}
 }
 
-func (rt *revTrace) Key() string {
-	return "revtrace"
-}
-
-func (rt *revTrace) Value() any {
-	return rt.revTrace
-}
-
-func (rt *revTrace) Visibility() Visibility {
-	return RESTRICT
-}
-
-func (rt *revTrace) Insert(other Entry) Entry {
-	if other == nil {
-		return rt
-	}
-
-	otherRevTrace, ok := other.(*revTrace)
-	if !ok {
-		panic("type mismatch inserting revtrace opt")
-	}
-
-	rt.revTrace = fmt.Sprintf("%s\n%s", rt.revTrace, otherRevTrace.revTrace)
-
-	return rt
-}
-
-func (rt *revTrace) Opt() Opt {
-	return func(e *ErrorT) {
-		e.Insert(rt)
-	}
+func (rt *revTrace) Opt(e *ErrorT) {
+	e.Troubleshooting.ReverseTrace = append(e.Troubleshooting.ReverseTrace, rt.revTrace)
 }
 
 // findCaller iterates over the stack frames and returns the first frame

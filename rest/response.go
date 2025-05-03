@@ -26,7 +26,7 @@ var (
 			errors.KindSystemError,
 			"internal server error",
 			errors.Hint("internal server error, please contact the support"),
-		).DTO(),
+		).ErrorDTO(),
 	)
 
 	// This is a generic response for unknown errors
@@ -36,7 +36,7 @@ var (
 			errors.KindSystemError,
 			"unknown error",
 			errors.Hint("unknown error, please contact the support"),
-		).DTO(),
+		).ErrorDTO(),
 	)
 )
 
@@ -75,15 +75,6 @@ func WriteError(err error) *Response[*errors.DTO] {
 		return internalServerErrorResponse
 	}
 
-	statusCodeEntry, ok := usrErr.Find(StatusCodeOptKey)
-	if !ok {
-		return WriteResponse(http.StatusBadRequest, usrErr.DTO())
-	}
-
-	statusCode, ok := statusCodeEntry.(StatusCode)
-	if !ok {
-		panic("invalid status code opt")
-	}
-
-	return WriteResponse(int(statusCode), usrErr.DTO())
+	statusCode := usrErr.Kind().StatusCode()
+	return WriteResponse(statusCode, usrErr.ErrorDTO())
 }

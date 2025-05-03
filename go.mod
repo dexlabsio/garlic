@@ -3,7 +3,6 @@ module github.com/dexlabsio/garlic
 go 1.24.1
 
 require (
-	dario.cat/mergo v1.0.1
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-playground/validator/v10 v10.25.0

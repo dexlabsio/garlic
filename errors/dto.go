@@ -1,45 +1,45 @@
 package errors
 
-import "strings"
+import (
+	"encoding/json"
+)
 
 type Transferable interface {
-	DTO() *DTO
+	ErrorDTO() *DTO
 }
 
 type DTO struct {
+	Name    string         `json:"name" mapstructure:"name"`
 	Error   string         `json:"error" mapstructure:"error"`
-	Kind    string         `json:"kind" mapstructure:"kind"`
+	Code    string         `json:"kind" mapstructure:"kind"`
 	Details map[string]any `json:"details,omitempty" mapstructure:"details,omitempty"`
 }
 
 func NewDTO(err error) *DTO {
 	e, ok := err.(Transferable)
 	if !ok {
-		e = From(err)
+		e = Raw(KindError, err.Error())
 	}
 
-	return e.DTO()
+	return e.ErrorDTO()
 }
 
-func (dto *DTO) Parse() *ErrorT {
-	kind := dto.DecodeKind()
-	err := New(kind, dto.Error)
-	err.extension = dto.Details
-
-	return err
+func (dto *DTO) Decode() *ErrorT {
+	return &ErrorT{
+		kind:    GetByCode(dto.Code),
+		message: dto.Error,
+		Details: dto.Details,
+	}
 }
 
-func (dto *DTO) DecodeKind() *Kind {
-	kindHierarchy := strings.Split(dto.Kind, KIND_SEPARATOR)
-
-	for _, k := range kindHierarchy {
-		switch k {
-		case KindUserError.Name:
-			return KindExternalUserError
-		case KindSystemError.Name:
-			return KindExternalSystemError
-		}
+// JSON serializes the DTO struct into a JSON formatted byte slice.
+// It returns the serialized data as json.RawMessage, which is a type alias for []byte.
+// If an error occurs during the marshaling process, the function will panic.
+func (dto *DTO) JSON() json.RawMessage {
+	b, err := json.Marshal(dto)
+	if err != nil {
+		panic(err)
 	}
 
-	return KindExternalUnknownError
+	return json.RawMessage(b)
 }

@@ -1,61 +1,40 @@
 package errors
 
 import (
-	"maps"
-	"slices"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-type context struct {
-	entries map[string]Entry
+type ContextT struct {
+	caller  string
+	entries *SetT
 }
 
-func Context(entries ...Entry) *context {
-	ectx := &context{
-		entries: map[string]Entry{},
+// Context creates a new ContextT instance with the provided entries.
+// It determines the caller's function name using findCaller() and sets it as the caller.
+// The entries are stored in a SetT, which allows for efficient management of log entries.
+// This function is useful for capturing and organizing contextual information
+// that can be logged or used for troubleshooting purposes.
+func Context(entries ...Entry) *ContextT {
+	caller := "unknown"
+	if _, _, name, ok := findCaller(); ok {
+		caller = name
 	}
 
-	for _, entry := range entries {
-		ectx.Insert(entry)
-	}
-
-	return ectx
-}
-
-func (u *context) Add(entries ...Entry) *context {
-	for _, entry := range entries {
-		u.Insert(entry)
-	}
-
-	return u
-}
-
-func (u *context) Opt() Opt {
-	entries := slices.Collect(maps.Values(u.entries))
-	return func(e *ErrorT) {
-		e.Insert(userScope(entries))
-		e.Insert(systemScope(entries))
+	return &ContextT{
+		caller:  caller,
+		entries: Set(entries...),
 	}
 }
 
-func (u *context) Insert(entry Entry) {
-	if entry == nil {
-		return
-	}
-
-	key := entry.Key()
-	current, ok := u.entries[key]
-	if !ok || current == nil {
-		u.entries[key] = entry
-	} else {
-		u.entries[key] = current.Insert(entry)
-	}
+func (c *ContextT) Add(entries ...Entry) *ContextT {
+	c.entries.Extend(entries...)
+	return c
 }
 
-func (u *context) MarshalLogObject(enc zapcore.ObjectEncoder) error {
-	for _, v := range u.entries {
+func (c *ContextT) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddString("function", c.caller)
+	for _, v := range c.entries.Values() {
 		if v.Value() != nil {
 			enc.AddReflected(v.Key(), v.Value())
 		}
@@ -64,6 +43,19 @@ func (u *context) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	return nil
 }
 
-func (u *context) Zap() zap.Field {
-	return zap.Object("context", u)
+func (c *ContextT) Zap() zap.Field {
+	return zap.Object("context", c)
+}
+
+func (c *ContextT) Opt(e *ErrorT) {
+	outputs := make(map[string]any, len(c.entries.Values()))
+	for _, entry := range c.entries.Values() {
+		outputs[entry.Key()] = entry.Value()
+	}
+
+	if e.Troubleshooting.Context == nil {
+		e.Troubleshooting.Context = map[string]any{}
+	}
+
+	e.Troubleshooting.Context[c.caller] = outputs
 }

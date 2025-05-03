@@ -8,7 +8,7 @@ package errors
 type TemplateT struct {
 	kind    *Kind
 	message string
-	opts    []Opter
+	opts    []Opt
 }
 
 // Template initializes a new TemplateT instance, which is used to define a template
@@ -16,7 +16,7 @@ type TemplateT struct {
 // (opts) that can be used to customize the error. This function returns a pointer to the
 // TemplateT struct, allowing for the creation of new errors or the propagation of existing
 // errors with additional context provided by the template.
-func Template(kind *Kind, message string, opts ...Opter) *TemplateT {
+func Template(kind *Kind, message string, opts ...Opt) *TemplateT {
 	return &TemplateT{
 		kind:    kind,
 		message: message,
@@ -28,7 +28,7 @@ func Template(kind *Kind, message string, opts ...Opter) *TemplateT {
 // and optional parameters (opts). It combines the template's options with any additional
 // options provided, allowing for customization of the error. This method returns a pointer
 // to an ErrorT instance, representing the newly created error.
-func (t *TemplateT) New(opts ...Opter) *ErrorT {
+func (t *TemplateT) New(opts ...Opt) *ErrorT {
 	opts = append(opts, t.opts...)
 	return New(t.kind, t.message, opts...)
 }
@@ -37,7 +37,7 @@ func (t *TemplateT) New(opts ...Opter) *ErrorT {
 // It combines the template's options with any additional options provided, allowing for
 // customization of the error propagation. This method returns a pointer to an ErrorT instance,
 // representing the propagated error with the specified kind, message, and options.
-func (t *TemplateT) Propagate(err error, opts ...Opter) *ErrorT {
+func (t *TemplateT) Propagate(err error, opts ...Opt) *ErrorT {
 	opts = append(opts, t.opts...)
 	return PropagateAs(t.kind, err, t.message, opts...)
 }

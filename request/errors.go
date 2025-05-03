@@ -5,5 +5,5 @@ import (
 )
 
 var (
-	InvalidRequestError = errors.NewKind("Invalid Request Error", errors.KindUserError)
+	InvalidRequestError = errors.Get("InvalidRequestError")
 )

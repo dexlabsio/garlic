@@ -9,10 +9,6 @@ import (
 	"github.com/dexlabsio/garlic/errors"
 )
 
-type Connector struct {
-	config *Config
-}
-
 type Request struct {
 	Method      string
 	URI         string
@@ -20,12 +16,20 @@ type Request struct {
 	QueryParams map[string]string
 }
 
+type Connector struct {
+	config *Config
+}
+
+func NewConnector(config *Config) *Connector {
+	return &Connector{config}
+}
+
 func (c *Connector) Request(ctx context.Context, req *Request, result any) error {
 	ectx := errors.Context(
-		errors.Field("http_method", req.Method, errors.Restrict),
-		errors.Field("http_url", c.config.URL, errors.Restrict),
-		errors.Field("http_uri", req.URI, errors.Restrict),
-		errors.Field("http_query_params", req.QueryParams, errors.Restrict),
+		errors.Field("http_method", req.Method),
+		errors.Field("http_url", c.config.URL),
+		errors.Field("http_uri", req.URI),
+		errors.Field("http_query_params", req.QueryParams),
 	)
 
 	target, err := buildURL(c.config.URL, req.URI, req.QueryParams)
@@ -87,5 +91,5 @@ func handleFailure(res *http.Response) *errors.ErrorT {
 		return errors.PropagateAs(errors.KindSystemError, err, "failed to decode response body")
 	}
 
-	return body.Parse()
+	return body.Decode()
 }

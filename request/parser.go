@@ -6,7 +6,6 @@ import (
 
 	"github.com/dexlabsio/garlic/crypto"
 	"github.com/dexlabsio/garlic/errors"
-	"github.com/dexlabsio/garlic/rest"
 	"github.com/dexlabsio/garlic/validator"
 )
 
@@ -33,7 +32,6 @@ func DecodeRequestBody[T any](r *http.Request, form T) error {
 			errors.Hint(
 				"something may be wrong with formatting or the content of the request body",
 			),
-			rest.StatusCode(http.StatusBadRequest),
 		)
 	}
 
@@ -41,7 +39,6 @@ func DecodeRequestBody[T any](r *http.Request, form T) error {
 		return errors.Propagate(
 			err,
 			"failed to validate form",
-			rest.StatusCode(http.StatusBadRequest),
 		)
 	}
 

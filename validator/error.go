@@ -15,51 +15,44 @@ func ValidationErrors(errs val.ValidationErrors) *validationErrors {
 	return &validationErrors{errs}
 }
 
-func (verrs *validationErrors) Key() string {
-	return "validation_errors"
-}
-
-func (verrs *validationErrors) Value() any {
-	errors := make([]string, len(verrs.errs))
-	for i, e := range verrs.errs {
+func (verrs *validationErrors) Value() map[string]string {
+	errors := make(map[string]string, len(verrs.errs))
+	for _, e := range verrs.errs {
+		field := e.Field()
+		msg := fmt.Sprintf("something wrong on %s; %s", field, e.Tag())
 		switch e.Tag() {
 		case "required":
-			errors[i] = fmt.Sprintf("%s is a required field", e.Field())
+			msg = fmt.Sprintf("%s is a required field", field)
 		case "max":
-			errors[i] = fmt.Sprintf("%s must be a maximum of %s in length", e.Field(), e.Param())
+			msg = fmt.Sprintf("%s must be a maximum of %s in length", field, e.Param())
 		case "url":
-			errors[i] = fmt.Sprintf("%s must be a valid URL", e.Field())
+			msg = fmt.Sprintf("%s must be a valid URL", field)
 		case "alpha_space":
-			errors[i] = fmt.Sprintf("%s can only contain alphabetic and space characters", e.Field())
+			msg = fmt.Sprintf("%s can only contain alphabetic and space characters", field)
 		case "datetime":
 			if e.Param() == "2006-01-02" {
-				errors[i] = fmt.Sprintf("%s must be a valid date", e.Field())
+				msg = fmt.Sprintf("%s must be a valid date", field)
 			} else {
-				errors[i] = fmt.Sprintf("%s must follow %s format", e.Field(), e.Param())
+				msg = fmt.Sprintf("%s must follow %s format", field, e.Param())
 			}
-		default:
-			errors[i] = fmt.Sprintf("something wrong on %s; %s", e.Field(), e.Tag())
 		}
+
+		errors[field] = msg
 	}
 
 	return errors
 }
 
-func (verrs *validationErrors) Visibility() errors.Visibility {
-	return errors.PUBLIC
-}
+func (verrs *validationErrors) Opt(e *errors.ErrorT) {
+	errors := verrs.Value()
 
-func (verrs *validationErrors) Insert(other errors.Entry) errors.Entry {
-	if other == nil {
-		return verrs
-	}
-
-	otherVerrs, ok := other.(*validationErrors)
+	validationDetails, ok := e.Details["validation"].(map[string]string)
 	if !ok {
-		panic("type mismatch inserting simpleTrace opt")
+		validationDetails = make(map[string]string, len(errors))
+		e.Details["validation"] = validationDetails
 	}
 
-	verrs.errs = append(verrs.errs, otherVerrs.errs...)
-
-	return verrs
+	for k, v := range errors {
+		validationDetails[k] = v
+	}
 }
