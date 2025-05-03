@@ -50,6 +50,22 @@ var (
 		HTTPStatusCode: http.StatusBadRequest,
 		Parent:         KindInvalidRequestError,
 	}
+
+	KindAuthError = &Kind{
+		Name:           "AuthError",
+		Code:           "E00005",
+		Description:    "An error occurred during authentication, such as invalid credentials.",
+		HTTPStatusCode: http.StatusUnauthorized,
+		Parent:         KindUserError,
+	}
+
+	KindForbiddenError = &Kind{
+		Name:           "ForbiddenError",
+		Code:           "E00006",
+		Description:    "The user does not have permission to access the requested resource.",
+		HTTPStatusCode: http.StatusForbidden,
+		Parent:         KindUserError,
+	}
 )
 
 func init() {
@@ -59,5 +75,7 @@ func init() {
 		KindSystemError,
 		KindValidationError,
 		KindNotFound,
+		KindAuthError,
+		KindForbiddenError,
 	)
 }
