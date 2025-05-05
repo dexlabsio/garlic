@@ -1,7 +1,6 @@
 package request
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -22,9 +21,7 @@ func ParseResourceUUID(r *http.Request, param string) (uuid.UUID, error) {
 			InvalidRequestError,
 			err,
 			"failed to parse resource id (int)",
-			errors.Hint(
-				fmt.Sprintf("Something is wrong with the request field '%s'", param),
-			),
+			errors.Hint("Something is wrong with the request field '%s'", param),
 		)
 	}
 
@@ -42,9 +39,7 @@ func ParseResourceInt(r *http.Request, param string) (int, error) {
 			InvalidRequestError,
 			err,
 			"failed to parse resource id (int)",
-			errors.Hint(
-				fmt.Sprintf("Something is wrong with the request field '%s'", param),
-			),
+			errors.Hint("Something is wrong with the request field '%s'", param),
 		)
 	}
 
@@ -60,9 +55,7 @@ func ParseResourceString(r *http.Request, param string) (string, error) {
 		return "", errors.New(
 			InvalidRequestError,
 			"path string is empty",
-			errors.Hint(
-				fmt.Sprintf("String path '%s' can't be empty", param),
-			),
+			errors.Hint("String path '%s' can't be empty", param),
 		)
 	}
 
@@ -72,9 +65,7 @@ func ParseResourceString(r *http.Request, param string) (string, error) {
 			InvalidRequestError,
 			err,
 			"failed to unescape path string",
-			errors.Hint(
-				fmt.Sprintf("We couldn't unescape the path string '%s'", param),
-			),
+			errors.Hint("We couldn't unescape the path string '%s'", param),
 		)
 	}
 
@@ -116,9 +107,7 @@ func ParseParamUUID(r *http.Request, param string) (uuid.UUID, error) {
 		err := errors.New(
 			InvalidRequestError,
 			"required request param is missing",
-			errors.Hint(
-				fmt.Sprintf("Something is wrong with the request param '%s'", param),
-			),
+			errors.Hint("Something is wrong with the request param '%s'", param),
 		)
 
 		return uuid.Nil, err
@@ -130,9 +119,7 @@ func ParseParamUUID(r *http.Request, param string) (uuid.UUID, error) {
 			InvalidRequestError,
 			err,
 			"malformed required request param",
-			errors.Hint(
-				fmt.Sprintf("Something is wrong with the request param '%s'", param),
-			),
+			errors.Hint("Something is wrong with the request param '%s'", param),
 		)
 	}
 
@@ -155,9 +142,7 @@ func ParseOptionalParamUUID(r *http.Request, param string) (uuid.UUID, error) {
 			InvalidRequestError,
 			err,
 			"malformed optional request param",
-			errors.Hint(
-				fmt.Sprintf("Something is wrong with the optional request param '%s'", param),
-			),
+			errors.Hint("Something is wrong with the optional request param '%s'", param),
 		)
 	}
 
@@ -174,9 +159,7 @@ func ParseParamString(r *http.Request, param string) (string, error) {
 		return "", errors.New(
 			InvalidRequestError,
 			"missing required request param",
-			errors.Hint(
-				fmt.Sprintf("Request param '%s' is missing", param),
-			),
+			errors.Hint("Request param '%s' is missing", param),
 		)
 	}
 
@@ -203,7 +186,7 @@ func ParseOptionalParamBool(r *http.Request, param string) (bool, error) {
 			InvalidRequestError,
 			err,
 			"Optional request param bool was provided but cannot be parsed",
-			errors.Hint(fmt.Sprintf("make sure '%s' request param is either 'true' or 'false', no other value is accepted", param)),
+			errors.Hint("make sure '%s' request param is either 'true' or 'false', no other value is accepted", param),
 		)
 	}
 

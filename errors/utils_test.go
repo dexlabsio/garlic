@@ -10,9 +10,29 @@ import (
 
 func TestAsKind(t *testing.T) {
 	var (
-		KindTestError      = NewKind("Test Error", nil)
-		KindChildTestError = NewKind("Child Test Error", KindTestError)
-		KindOtherTestError = NewKind("Other Test Error", nil)
+		KindTestError = &Kind{
+			Name:           "TestError",
+			Code:           "E1",
+			Description:    "Test error",
+			HTTPStatusCode: HTTP_STATUS_NOT_DEFINED,
+			Parent:         nil,
+		}
+
+		KindChildTestError = &Kind{
+			Name:           "ChildTestError",
+			Code:           "E2",
+			Description:    "Child test error",
+			HTTPStatusCode: HTTP_STATUS_NOT_DEFINED,
+			Parent:         KindTestError,
+		}
+
+		KindOtherTestError = &Kind{
+			Name:           "OtherTestError",
+			Code:           "E3",
+			Description:    "Other test error",
+			HTTPStatusCode: HTTP_STATUS_NOT_DEFINED,
+			Parent:         nil,
+		}
 	)
 
 	cases := []struct {

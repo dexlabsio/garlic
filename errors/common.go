@@ -73,6 +73,7 @@ func init() {
 		KindError,
 		KindUserError,
 		KindSystemError,
+		KindInvalidRequestError,
 		KindValidationError,
 		KindNotFound,
 		KindAuthError,
