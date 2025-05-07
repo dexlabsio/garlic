@@ -12,9 +12,9 @@ type PayloadMessage struct {
 	Message string `json:"message"`
 }
 
-type Response[T any] struct {
+type Response struct {
 	StatusCode int
-	Payload    T
+	Payload    any
 }
 
 var (
@@ -40,7 +40,7 @@ var (
 	)
 )
 
-func (r *Response[_]) Must(w http.ResponseWriter) {
+func (r *Response) Must(w http.ResponseWriter) {
 	w.Header().Set("Context-Type", "application/json")
 	w.WriteHeader(r.StatusCode)
 	if err := json.NewEncoder(w).Encode(r.Payload); err != nil {
@@ -49,21 +49,21 @@ func (r *Response[_]) Must(w http.ResponseWriter) {
 }
 
 // WriteResponse is a generic function to create a response with a payload
-func WriteResponse[T any](statusCode int, payload T) *Response[T] {
-	return &Response[T]{
+func WriteResponse(statusCode int, payload any) *Response {
+	return &Response{
 		StatusCode: statusCode,
 		Payload:    payload,
 	}
 }
 
 // WriteMessage is a helper function to create a response with a message
-func WriteMessage(statusCode int, message string) *Response[PayloadMessage] {
+func WriteMessage(statusCode int, message string) *Response {
 	return WriteResponse(statusCode, PayloadMessage{Message: message})
 }
 
 // WriteError is a helper function to create a response with a service error
 // or a generic error response if the error is not a service error
-func WriteError(err error) *Response[*errors.DTO] {
+func WriteError(err error) *Response {
 	// Return unknown error if the callen didn't provide an error
 	if err == nil {
 		return unknownErrorResponse
