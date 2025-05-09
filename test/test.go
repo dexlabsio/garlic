@@ -14,8 +14,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/dexlabsio/garlic/logging"
+	"github.com/dexlabsio/garlic/tracing"
+	"github.com/go-chi/chi/v5"
 	"github.com/wI2L/jsondiff"
 	"go.uber.org/zap"
 )
@@ -120,8 +121,8 @@ func (tc *APITestCase) End() {
 
 		// Add the logger to the request context (there's a middleware that does this, and the api layer uses it)
 		ctx = context.WithValue(ctx, logging.LoggerKey, zap.NewNop())
-		ctx = context.WithValue(ctx, logging.RequestIdKey, "test-request-id")
-		ctx = context.WithValue(ctx, logging.SessionIdKey, "test-session-id")
+		ctx = context.WithValue(ctx, tracing.RequestIdKey, "test-request-id")
+		ctx = context.WithValue(ctx, tracing.SessionIdKey, "test-session-id")
 		request := tc.request.WithContext(ctx)
 
 		request.URL.RawQuery = tc.requestQuery.Encode()

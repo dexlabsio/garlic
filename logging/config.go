@@ -1,14 +1,14 @@
 package logging
 
 import (
-	"github.com/dexlabsio/garlic/global"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type Config struct {
-	Level    string `json:"level" mapstructure:"level" yaml:"level"`
-	Encoding string `json:"encoding" mapstructure:"encoding" yaml:"encoding"`
+	Level         string         `json:"level" mapstructure:"level" yaml:"level"`
+	Encoding      string         `json:"encoding" mapstructure:"encoding" yaml:"encoding"`
+	InitialFields map[string]any `json:"initial_fields" mapstructure:"initial_fields" yaml:"initial_fields"`
 }
 
 func (c *Config) Parse() *zap.Config {
@@ -59,9 +59,7 @@ func (c *Config) Parse() *zap.Config {
 		// logs, see the package-level AdvancedConfiguration example.
 		ErrorOutputPaths: []string{"stderr"},
 		// InitialFields is a collection of fields to add to the root logger.
-		InitialFields: map[string]interface{}{
-			"version": global.Version,
-		},
+		InitialFields: c.InitialFields,
 	}
 
 	// In development mode, we want to have a more human-readable output
@@ -69,8 +67,6 @@ func (c *Config) Parse() *zap.Config {
 		zapConfig.EncoderConfig = zapcore.EncoderConfig{
 			MessageKey: "msg",
 		}
-
-		zapConfig.InitialFields = map[string]interface{}{}
 	}
 
 	return zapConfig
@@ -78,7 +74,8 @@ func (c *Config) Parse() *zap.Config {
 
 func Defaults() *Config {
 	return &Config{
-		Level:    "error",
-		Encoding: "json",
+		Level:         "error",
+		Encoding:      "json",
+		InitialFields: map[string]any{},
 	}
 }
