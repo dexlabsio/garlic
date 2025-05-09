@@ -17,20 +17,12 @@ type Troubleshooting struct {
 	Context      map[string]any
 }
 
-func NewTroubleshooting() *Troubleshooting {
-	return &Troubleshooting{
-		ReverseTrace: []string{},
-		StackTrace:   "",
-		Context:      map[string]any{},
-	}
-}
-
 type ErrorT struct {
 	kind            *Kind
 	message         string
 	cause           error
 	Details         map[string]any
-	Troubleshooting *Troubleshooting
+	Troubleshooting Troubleshooting
 }
 
 // Propagate creates a new ErrorT instance with a default error kind (KindError),
@@ -73,10 +65,9 @@ func New(kind *Kind, message string, opts ...Opt) *ErrorT {
 // adding tracing information, allowing for more control over the error's metadata and context.
 func Raw(kind *Kind, message string, opts ...Opt) *ErrorT {
 	e := &ErrorT{
-		kind:            kind,
-		message:         message,
-		Details:         map[string]any{},
-		Troubleshooting: NewTroubleshooting(),
+		kind:    kind,
+		message: message,
+		Details: map[string]any{},
 	}
 
 	for _, opt := range opts {
@@ -94,10 +85,9 @@ func Raw(kind *Kind, message string, opts ...Opt) *ErrorT {
 // and metadata.
 func From(kind *Kind, err error, message string, opts ...Opt) *ErrorT {
 	e := &ErrorT{
-		kind:            kind,
-		message:         message,
-		Details:         map[string]any{},
-		Troubleshooting: NewTroubleshooting(),
+		kind:    kind,
+		message: message,
+		Details: map[string]any{},
 	}
 
 	e.wrap(err)

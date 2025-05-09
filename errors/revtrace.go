@@ -23,6 +23,10 @@ func RevTrace() *revTrace {
 }
 
 func (rt *revTrace) Opt(e *ErrorT) {
+	if e.Troubleshooting.ReverseTrace == nil {
+		e.Troubleshooting.ReverseTrace = []string{}
+	}
+
 	e.Troubleshooting.ReverseTrace = append(e.Troubleshooting.ReverseTrace, rt.revTrace)
 }
 
