@@ -11,6 +11,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dexlabsio/garlic/errors"
 	"github.com/dexlabsio/garlic/logging"
+	"github.com/dexlabsio/garlic/tracing"
 )
 
 // Post sends a HTTP POST request to the given url
@@ -59,8 +60,14 @@ func request(ctx context.Context, method, url string, data any) (*http.Response,
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Session-ID", logging.GetSessionIdFromContext(ctx))
-	req.Header.Set("X-Request-ID", logging.GetRequestIdFromContext(ctx))
+
+	if sessionId, err := tracing.GetSessionIdFromContext(ctx); err == nil {
+		req.Header.Set("X-Session-ID", sessionId)
+	}
+
+	if requestId, err := tracing.GetRequestIdFromContext(ctx); err == nil {
+		req.Header.Set("X-Request-ID", requestId.String())
+	}
 
 	// create net_http client and send request
 	client := &http.Client{}

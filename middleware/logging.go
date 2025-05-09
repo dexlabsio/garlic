@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/dexlabsio/garlic/errors"
 	"github.com/dexlabsio/garlic/logging"
 	"github.com/dexlabsio/garlic/request"
 	"go.uber.org/zap"
@@ -23,30 +23,27 @@ func Logging(next http.Handler) http.Handler {
 			return
 		}
 
+		logger := logging.Global()
 		start := time.Now()
 
 		// The request context coming in must already contain the request and session IDs.
 		// We will keep the same request ID in the context to maintain traceability.
-		requestId := request.GetRequestId(r)
-		sessionId := request.GetSessionId(r)
+		requestId, err := request.GetRequestId(r)
+		if err != nil {
+			logger.Debug("Request ID will not be logged for this request", errors.Zap(err))
+		} else {
+			logger = logger.With(zap.Stringer("request_id", requestId))
+		}
 
-		lrw := &loggingResponseWriter{w, http.StatusOK, 0}
-		lrw.Header().Set(request.RequestIdHeaderKey, requestId)
-		lrw.Header().Set(request.SessionIdHeaderKey, sessionId)
-
-		logger := logging.Global().With(
-			zap.String("request_id", requestId),
-			zap.String("session_id", sessionId),
+		logger = logger.With(
 			zap.String("request_method", r.Method),
 			zap.String("request_url", r.URL.String()),
 		)
+
+		r = request.SetLogger(r, logger)
+
+		lrw := &loggingResponseWriter{w, http.StatusOK, 0}
 		logger.Debug(fmt.Sprintf("Handling %s %s", r.Method, r.URL.String()))
-
-		// Set the logger in the context for future use
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, logging.LoggerKey, logger)
-		r = r.WithContext(ctx)
-
 		next.ServeHTTP(lrw, r)
 
 		duration := time.Since(start)
@@ -66,9 +63,14 @@ func Logging(next http.Handler) http.Handler {
 	})
 }
 
+// loggingResponseWriter is a custom HTTP response writer that captures
+// the status code and the size of the response. It embeds the standard
+// http.ResponseWriter and overrides the WriteHeader and Write methods to
+// store the status code and accumulate the size of the response body.
+// This allows for enhanced logging of HTTP responses, including the
+// status code and the total size of the response sent to the client.
 type loggingResponseWriter struct {
 	http.ResponseWriter
-
 	statusCode   int
 	responseSize int
 }

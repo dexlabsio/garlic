@@ -35,7 +35,7 @@ var (
 		Parent:         KindUserError,
 	}
 
-	KindNotFound = &Kind{
+	KindNotFoundError = &Kind{
 		Name:           "NotFoundError",
 		Code:           "E00003",
 		Description:    "The requested resource was not found in our system or external services.",
@@ -66,6 +66,20 @@ var (
 		HTTPStatusCode: http.StatusForbidden,
 		Parent:         KindUserError,
 	}
+
+	KindContextError = &Kind{
+		Name:        "ContextError",
+		Code:        "S00002",
+		Description: "An error occurred due to a problem with the context.",
+		Parent:      KindSystemError,
+	}
+
+	KindContextValueNotFoundError = &Kind{
+		Name:        "ContextValueNotFoundError",
+		Code:        "S00003",
+		Description: "A required value was not found in the context.",
+		Parent:      KindContextError,
+	}
 )
 
 func init() {
@@ -75,8 +89,10 @@ func init() {
 		KindSystemError,
 		KindInvalidRequestError,
 		KindValidationError,
-		KindNotFound,
+		KindNotFoundError,
 		KindAuthError,
 		KindForbiddenError,
+		KindContextError,
+		KindContextValueNotFoundError,
 	)
 }

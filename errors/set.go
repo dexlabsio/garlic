@@ -9,6 +9,8 @@ func Set(entries ...Entry) *SetT {
 		entries: []Entry{},
 	}
 
+	set.Extend(entries...)
+
 	return set
 }
 

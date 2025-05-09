@@ -10,8 +10,6 @@ type key int
 
 const (
 	LoggerKey key = iota
-	RequestIdKey
-	SessionIdKey
 )
 
 // GetLoggerFromContext is a helper function that retrieves the logger from a context
@@ -24,22 +22,10 @@ func GetLoggerFromContext(ctx context.Context) *zap.Logger {
 	return logger
 }
 
-// GetRequestIdFromContext is a helper function that retrieves the request ID from a context
-func GetRequestIdFromContext(ctx context.Context) string {
-	requestId, ok := ctx.Value(RequestIdKey).(string)
-	if !ok {
-		panic("Failed to get request ID from context")
-	}
-
-	return requestId
-}
-
-// GetSessionIdFromContext is a helper function that retrieves the session ID from a context
-func GetSessionIdFromContext(ctx context.Context) string {
-	sessionId, ok := ctx.Value(SessionIdKey).(string)
-	if !ok {
-		panic("Failed to get session ID from context")
-	}
-
-	return sessionId
+// SetContextLogger is a helper function that associates a logger with a context
+// by storing the logger in the context using a predefined key. This allows
+// the logger to be retrieved later from the context, enabling consistent
+// logging throughout the request lifecycle.
+func SetContextLogger(ctx context.Context, logger *zap.Logger) context.Context {
+	return context.WithValue(ctx, LoggerKey, logger)
 }
