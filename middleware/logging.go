@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dexlabsio/garlic/errors"
 	"github.com/dexlabsio/garlic/logging"
 	"github.com/dexlabsio/garlic/request"
 	"go.uber.org/zap"
@@ -17,44 +16,36 @@ import (
 // subsequent layers.
 func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l := logging.Global()
+
 		// If the request is a health check, we don't need to log it.
 		if r.URL.String() == "/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		logger := logging.Global()
 		start := time.Now()
 
-		// The request context coming in must already contain the request and session IDs.
-		// We will keep the same request ID in the context to maintain traceability.
-		requestId, err := request.GetRequestId(r)
-		if err != nil {
-			logger.Debug("Request ID will not be logged for this request", errors.Zap(err))
-		} else {
-			logger = logger.With(zap.Stringer("request_id", requestId))
-		}
-
-		logger = logger.With(
+		l = l.With(
 			zap.String("request_method", r.Method),
 			zap.String("request_url", r.URL.String()),
 		)
 
-		r = request.SetLogger(r, logger)
+		r = request.SetLogger(r, l)
 
 		lrw := &loggingResponseWriter{w, http.StatusOK, 0}
-		logger.Debug(fmt.Sprintf("Handling %s %s", r.Method, r.URL.String()))
+		l.Debug(fmt.Sprintf("Handling %s %s", r.Method, r.URL.String()))
 		next.ServeHTTP(lrw, r)
 
 		duration := time.Since(start)
 
-		logger = logger.With(
+		l = l.With(
 			zap.Int("response_status", lrw.statusCode),
 			zap.Duration("response_time", duration),
 			zap.Int("response_size", lrw.responseSize),
 		)
 
-		logger.Info(fmt.Sprintf(
+		l.Info(fmt.Sprintf(
 			"[%d] %s %s",
 			lrw.statusCode,
 			r.Method,
