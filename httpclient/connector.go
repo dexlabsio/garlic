@@ -43,7 +43,7 @@ func (c *Connector) Request(ctx context.Context, req *Request, result any) error
 	}
 
 	// We only support StatusOK for successful operations
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 		err := handleFailure(res)
 		return errors.Propagate(err, "bad response from external service", ectx)
 	}
@@ -62,10 +62,7 @@ func buildURL(baseURL, uri string, params map[string]string) (string, error) {
 		return "", err
 	}
 
-	u.Path, err = url.JoinPath(baseURL, uri)
-	if err != nil {
-		return "", err
-	}
+	u = u.JoinPath(uri)
 
 	q := u.Query()
 	for k, v := range params {
