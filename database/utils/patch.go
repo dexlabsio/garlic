@@ -2,70 +2,78 @@ package utils
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
+	"strings"
 
-	"github.com/dexlabsio/garlic/errors"
-	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
-// ParsePatchFields parses the fields of a resource model used for partial updates.
-// The majority of the complexity is due to the fact that we don't know which fields
-// will be present in the patch operation. Therefore, the manipulations need to be
-// generic enough to support the variety of those cases.
-func ParsePatchFields(resource any) ([]string, []any, error) {
+func ExtendedNamed(query string, resource any, extensions map[string]any) (string, []any) {
+	target := maps.Collect(ResourceIter(resource))
+	for k, v := range extensions {
+		target[k] = v
+	}
+
+	query, args, err := sqlx.Named(query, target)
+	if err != nil {
+		panic(fmt.Errorf("fatal failure trying to get extended named query: %w", err))
+	}
+
+	query, args, err = sqlx.In(query, args...)
+	if err != nil {
+		panic(fmt.Errorf("fatal failure trying to get expand extended named query: %w", err))
+	}
+
+	return query, args
+}
+
+func JoinedPatchResourceBindings(resource any) string {
+	return strings.Join(NamedResourceBindings(resource), ", ")
+}
+
+func NamedResourceBindings(resource any) []string {
+	params := []string{}
+	for k := range ResourceIter(resource) {
+		params = append(params, fmt.Sprintf("%s = :%s", k, k))
+	}
+
+	return params
+}
+
+func ResourceIter(resource any) func(func(string, any) bool) {
 	v := reflect.ValueOf(resource)
 	if v.Kind() == reflect.Ptr {
 		if v.Elem().Kind() == reflect.Struct {
 			v = v.Elem() // Dereference the pointer to get the struct
 		} else {
-			panic("Pointer does not point to a struct")
+			panic("pointer does not point to a struct")
 		}
 	}
 
 	t := v.Type()
+	return func(yield func(string, any) bool) {
+		for i := 0; i < t.NumField(); i++ {
+			field := t.Field(i)
+			value := v.Field(i)
+			dbTag := field.Tag.Get("db")
 
-	numFields := t.NumField()
-	params := make([]string, 0, numFields)
-	values := make([]any, 0, numFields+1) // need +1 because we're going to append the ID later
-
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		if field.Name == "Id" {
-			continue // Skip the ID field
-		}
-
-		value := v.Field(i)
-
-		dbTag := field.Tag.Get("db")
-
-		if dbTag == "" {
-			continue // Skip fields without db tags
-		}
-
-		if value.Kind() == reflect.Ptr {
-			if value.IsNil() {
-				continue // Skip nil pointers, it means user didn't provide a value for this field
+			if dbTag == "" {
+				continue // Skip fields without db tags
 			}
 
-			val := value.Elem() // Dereference the pointer
-			values = append(values, val.Interface())
-			params = append(params, fmt.Sprintf("%s = $%d", dbTag, len(params)+1))
-		} else {
-			panic(fmt.Sprintf("Patch structs can only have pointer fields. Field %s is invalid", field.Name))
+			if value.Kind() == reflect.Ptr {
+				if value.IsNil() {
+					continue // Skip nil pointers, it means user didn't provide a value for this field
+				}
+
+				val := value.Elem().Interface()
+				if !yield(dbTag, val) {
+					return
+				}
+			} else {
+				panic(fmt.Sprintf("patch structs can only have pointer fields: field %s is invalid", field.Name))
+			}
 		}
 	}
-
-	// Find and append the ID field
-	idField := v.FieldByName("Id")
-	if !idField.IsValid() {
-		return nil, nil, errors.New(errors.KindSystemError, "missing required ID field")
-	}
-
-	id := idField.Interface().(*uuid.UUID)
-	if id == nil {
-		panic("the resource ID cannot be nil")
-	}
-	values = append(values, id)
-
-	return params, values, nil
 }
