@@ -18,12 +18,6 @@ func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		l := logging.Global()
 
-		// If the request is a health check, we don't need to log it.
-		if r.URL.String() == "/health" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		start := time.Now()
 
 		l = l.With(
@@ -36,6 +30,11 @@ func Logging(next http.Handler) http.Handler {
 		lrw := &loggingResponseWriter{w, http.StatusOK, 0}
 		l.Debug(fmt.Sprintf("Handling %s %s", r.Method, r.URL.String()))
 		next.ServeHTTP(lrw, r)
+
+		// If the request is a health check, we don't need to log it.
+		if r.URL.String() == "/health" {
+			return
+		}
 
 		duration := time.Since(start)
 
