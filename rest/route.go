@@ -40,19 +40,19 @@ func Get(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
 }
 
 func Post(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
-	return &Route{http.MethodGet, url, f}
+	return &Route{http.MethodPost, url, f}
 }
 
 func Put(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
-	return &Route{http.MethodGet, url, f}
+	return &Route{http.MethodPut, url, f}
 }
 
 func Patch(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
-	return &Route{http.MethodGet, url, f}
+	return &Route{http.MethodPatch, url, f}
 }
 
 func Delete(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
-	return &Route{http.MethodGet, url, f}
+	return &Route{http.MethodDelete, url, f}
 }
 
 type App interface {
