@@ -12,41 +12,21 @@ import (
 var servers map[string]*Server
 
 type Server struct {
-	Name   string
-	router chi.Router
+	Name string
+	root chi.Router
 }
 
-func NewServer(name string, middlewares ...func(http.Handler) http.Handler) *Server {
+func NewServer(name string) *Server {
 	router := chi.NewRouter()
 
-	// Setup middlewares for API endpoints
-	router.Use(middlewares...)
-
 	return &Server{
-		Name:   name,
-		router: router,
+		Name: name,
+		root: router,
 	}
 }
 
 func (s *Server) Router() chi.Router {
-	return s.router
-}
-
-func (s *Server) RegisterApp(app App) {
-	for _, route := range app.Routes() {
-		switch route.Method {
-		case http.MethodGet:
-			s.router.Get(route.URL, route.Handler)
-		case http.MethodPost:
-			s.router.Post(route.URL, route.Handler)
-		case http.MethodPut:
-			s.router.Put(route.URL, route.Handler)
-		case http.MethodPatch:
-			s.router.Patch(route.URL, route.Handler)
-		case http.MethodDelete:
-			s.router.Delete(route.URL, route.Handler)
-		}
-	}
+	return s.root
 }
 
 // Listen starts an HTTP server on the specified bind address and listens for incoming requests.

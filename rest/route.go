@@ -3,47 +3,23 @@ package rest
 import (
 	"net/http"
 
+	chi "github.com/go-chi/chi/v5"
+
 	"github.com/dexlabsio/garlic/errors"
 	"github.com/dexlabsio/garlic/logging"
 )
 
-type RouteOptions int
-
-const (
-	// RouteOptionAllowPublicAccess tells the system to allow public access
-	// to this route without authentication
-	RouteOptionAllowPublicAccess RouteOptions = iota
-
-	// RouteOptionAllowOnlyAuthenticated tells the system to block the specific
-	// route for external access. Only authenticated users can access this. This
-	// is the default behavior
-	RouteOtionAllowOnlyAuthenticated
-
-	// RouteOptionAllowOnlySuperuser tells the system to block all the access to
-	// this route except if you're accessing this authenticated as a superuser
-	RouteOptionAllowOnlySuperuser
-)
-
-type RouteOptionsMap map[RouteOptions]struct{}
+type Routes []*Route
 
 type Route struct {
-	URL          string
-	Method       string
-	Handler      http.HandlerFunc
-	RouteOptions RouteOptionsMap
+	Method  string
+	Pattern string
+	Fn      func(http.ResponseWriter, *http.Request) error
 }
 
-type App interface {
-	Routes() []*Route
-}
-
-func (o RouteOptionsMap) IsEmpty() bool {
-	return len(o) == 0
-}
-
-func ToHandler(f func(http.ResponseWriter, *http.Request) error) func(w http.ResponseWriter, r *http.Request) {
+func (route *Route) Handler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := f(w, r)
+		err := route.Fn(w, r)
 		if err != nil {
 			ctx := r.Context()
 			l := logging.GetLoggerFromContext(ctx)
@@ -59,38 +35,32 @@ func ToHandler(f func(http.ResponseWriter, *http.Request) error) func(w http.Res
 	}
 }
 
-func route(method string, url string, f func(http.ResponseWriter, *http.Request) error, opts ...RouteOptions) *Route {
-	handler := ToHandler(f)
+func Get(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
+	return &Route{http.MethodGet, url, f}
+}
 
-	optsMap := make(RouteOptionsMap, len(opts))
-	for _, opt := range opts {
-		optsMap[opt] = struct{}{}
+func Post(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
+	return &Route{http.MethodGet, url, f}
+}
+
+func Put(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
+	return &Route{http.MethodGet, url, f}
+}
+
+func Patch(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
+	return &Route{http.MethodGet, url, f}
+}
+
+func Delete(url string, f func(http.ResponseWriter, *http.Request) error) *Route {
+	return &Route{http.MethodGet, url, f}
+}
+
+type App interface {
+	Routes() Routes
+}
+
+func RegisterApp(r chi.Router, app App) {
+	for _, route := range app.Routes() {
+		r.MethodFunc(route.Method, route.Pattern, route.Handler())
 	}
-
-	return &Route{
-		URL:          url,
-		Method:       method,
-		Handler:      handler,
-		RouteOptions: optsMap,
-	}
-}
-
-func Get(url string, f func(http.ResponseWriter, *http.Request) error, opts ...RouteOptions) *Route {
-	return route(http.MethodGet, url, f, opts...)
-}
-
-func Post(url string, f func(http.ResponseWriter, *http.Request) error, opts ...RouteOptions) *Route {
-	return route(http.MethodPost, url, f, opts...)
-}
-
-func Put(url string, f func(http.ResponseWriter, *http.Request) error, opts ...RouteOptions) *Route {
-	return route(http.MethodPut, url, f, opts...)
-}
-
-func Patch(url string, f func(http.ResponseWriter, *http.Request) error, opts ...RouteOptions) *Route {
-	return route(http.MethodPatch, url, f, opts...)
-}
-
-func Delete(url string, f func(http.ResponseWriter, *http.Request) error, opts ...RouteOptions) *Route {
-	return route(http.MethodDelete, url, f, opts...)
 }
