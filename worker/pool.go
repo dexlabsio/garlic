@@ -23,9 +23,10 @@ func NewPool(size int) *Pool {
 func (p *Pool) spawn() {
 	for i := 0; i < p.size; i++ {
 		go func() {
-			defer p.waitGroup.Done()
-			task := <-p.tasks
-			task()
+			for task := range p.tasks {
+				task()
+				p.waitGroup.Done()
+			}
 		}()
 	}
 }
