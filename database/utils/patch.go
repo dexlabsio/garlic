@@ -2,27 +2,21 @@ package utils
 
 import (
 	"fmt"
-	"maps"
 	"reflect"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
 
-func ExtendedNamed(query string, resource any, extensions map[string]any) (string, []any) {
-	target := maps.Collect(ResourceIter(resource))
-	for k, v := range extensions {
-		target[k] = v
-	}
-
-	query, args, err := sqlx.Named(query, target)
+func Named(query string, resource any) (string, []any) {
+	query, args, err := sqlx.Named(query, resource)
 	if err != nil {
-		panic(fmt.Errorf("fatal failure trying to get extended named query: %w", err))
+		panic(fmt.Errorf("fatal failure trying to get named query: %w", err))
 	}
 
 	query, args, err = sqlx.In(query, args...)
 	if err != nil {
-		panic(fmt.Errorf("fatal failure trying to get expand extended named query: %w", err))
+		panic(fmt.Errorf("fatal failure trying to get expand named query: %w", err))
 	}
 
 	return query, args
@@ -71,8 +65,6 @@ func ResourceIter(resource any) func(func(string, any) bool) {
 				if !yield(dbTag, val) {
 					return
 				}
-			} else {
-				panic(fmt.Sprintf("patch structs can only have pointer fields: field %s is invalid", field.Name))
 			}
 		}
 	}

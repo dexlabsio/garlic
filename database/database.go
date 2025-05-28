@@ -12,12 +12,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type Store interface {
-	Create(ctx context.Context, query string, resource any) error
-	Read(ctx context.Context, query string, resource any, args ...any) error
-	Update(ctx context.Context, query string, args ...any) error
-	Delete(ctx context.Context, query string, args ...any) error
-	List(ctx context.Context, query string, resourceList any, args ...any) error
+type Executor interface {
+	NamedQuery(query string, arg interface{}) (*sqlx.Rows, error)
+	Select(dest interface{}, query string, args ...interface{}) error
+	NamedExec(query string, arg interface{}) (sql.Result, error)
+	Exec(query string, args ...any) (sql.Result, error)
+	Get(dest interface{}, query string, args ...interface{}) error
 }
 
 type Database struct {
@@ -70,13 +70,33 @@ func (db *Database) Connect() error {
 	return nil
 }
 
+func (db *Database) BeginContext(ctx context.Context) (ctxTx context.Context, commit, rollback func() error, err error) {
+	ctxTx, commit, rollback, err = BeginContext(ctx, db.DB)
+	if err != nil {
+		err = errors.Propagate(err, "failed to begin database transaction")
+	}
+
+	return
+}
+
+func (db *Database) Executor(ctx context.Context) Executor {
+	tx := Transaction(ctx)
+	if tx != nil {
+		return tx
+	}
+
+	return db
+}
+
 func (db *Database) Create(ctx context.Context, query string, resource any) error {
 	ectx := errors.Context(
 		errors.Field("query", query),
 		errors.Field("resource_name", resource),
 	)
 
-	rows, err := db.NamedQueryContext(ctx, query, resource)
+	executor := db.Executor(ctx)
+
+	rows, err := executor.NamedQuery(query, resource)
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			switch pgErr.Code {
@@ -128,20 +148,22 @@ func (db *Database) List(ctx context.Context, query string, resourceList any, ar
 		errors.Field("query", query),
 	)
 
-	if err := db.Select(resourceList, query, args...); err != nil {
+	executor := db.Executor(ctx)
+	if err := executor.Select(resourceList, query, args...); err != nil {
 		return errors.PropagateAs(errors.KindSystemError, err, "failed to select resources", ectx)
 	}
 
 	return nil
 }
 
-func (db *Database) Delete(ctx context.Context, query string, resource any) error {
+func (db *Database) Delete(ctx context.Context, query string, args ...any) error {
 	ectx := errors.Context(
 		errors.Field("query", query),
-		errors.Field("resource", resource),
+		errors.Field("args", args),
 	)
 
-	res, err := db.NamedExec(query, resource)
+	executor := db.Executor(ctx)
+	res, err := executor.Exec(query, args...)
 	if err != nil {
 		return errors.PropagateAs(errors.KindSystemError, err, "failed to execute delete query")
 	}
@@ -169,7 +191,8 @@ func (db *Database) Update(ctx context.Context, query string, args ...any) error
 		errors.Field("args", args),
 	)
 
-	res, err := db.Exec(query, args...)
+	executor := db.Executor(ctx)
+	res, err := executor.Exec(query, args...)
 	if err != nil {
 		return errors.PropagateAs(errors.KindSystemError, err, "failed to execute query while updating resource", ectx)
 	}
@@ -197,7 +220,8 @@ func (db *Database) Read(ctx context.Context, query string, resource any, args .
 		errors.Field("args", args),
 	)
 
-	err := db.Get(resource, query, args...)
+	executor := db.Executor(ctx)
+	err := executor.Get(resource, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New(
 			errors.KindNotFoundError,

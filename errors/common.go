@@ -80,6 +80,22 @@ var (
 		Description: "A required value was not found in the context.",
 		Parent:      KindContextError,
 	}
+
+	KindDatabaseRecordNotFoundError = &Kind{
+		Name:           "DatabaseRecordNotFoundError",
+		Code:           "E00007",
+		Description:    "The requested database record was not found.",
+		HTTPStatusCode: http.StatusNotFound,
+		Parent:         KindNotFoundError,
+	}
+
+	KindDatabaseTransactionError = &Kind{
+		Name:           "DatabaseTransactionError",
+		Code:           "S00005",
+		Description:    "An error occurred during a database transaction.",
+		HTTPStatusCode: http.StatusInternalServerError,
+		Parent:         KindSystemError,
+	}
 )
 
 func init() {
@@ -94,5 +110,7 @@ func init() {
 		KindForbiddenError,
 		KindContextError,
 		KindContextValueNotFoundError,
+		KindDatabaseRecordNotFoundError,
+		KindDatabaseTransactionError,
 	)
 }
