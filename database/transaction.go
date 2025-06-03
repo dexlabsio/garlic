@@ -31,7 +31,7 @@ func BeginContext(ctx context.Context, db *sqlx.DB) (ctxTx context.Context, comm
 		)
 	}
 
-	ctx = context.WithValue(ctx, TransactionKey, tx)
+	ctxTx = context.WithValue(ctx, TransactionKey, tx)
 	commit = Commit(tx)
 	rollback = Rollback(tx)
 	return

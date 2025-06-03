@@ -29,23 +29,29 @@ func (s *Storer) Transaction(ctx context.Context, fn func(context.Context) error
 
 	ctxTx, commit, rollback, err := s.Store.BeginContext(ctx)
 	if err != nil {
-		err = errors.Propagate(err, "storer failed to begin database transaction")
+		return errors.Propagate(err, "storer failed to begin database transaction")
 	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			if err := rollback(); err != nil {
+				logging.Global().Error("Failed to rollback transaction during panic handling", errors.Zap(err))
+			}
+			panic(p)
+		}
+	}()
+
+	defer func() {
+		if err != nil {
+			if rerr := rollback(); rerr != nil {
+				logging.Global().Error("Failed to rollback transaction during error handling", errors.Zap(rerr))
+			}
+		}
+	}()
 
 	err = fn(ctxTx)
-	if p := recover(); p != nil {
-		if rerr := rollback(); rerr != nil {
-			logging.Global().Error("Failed to rollback transaction during panic handling", errors.Zap(rerr))
-		}
-		panic(p)
-	}
-
 	if err != nil {
-		if rerr := rollback(); rerr != nil {
-			logging.Global().Error("Failed to rollback transaction during error handling", errors.Zap(rerr))
-		}
-
-		return errors.Propagate(err, "storer transaction failed and rollback was applied")
+		return errors.Propagate(err, "failed to execute transactional function")
 	}
 
 	err = commit()
