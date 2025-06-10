@@ -19,6 +19,9 @@ func Named(query string, resource any) (string, []any) {
 		panic(fmt.Errorf("fatal failure trying to get expand named query: %w", err))
 	}
 
+	// Specific to postgres
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+
 	return query, args
 }
 
