@@ -1,5 +1,13 @@
 package global
 
-// Version represents the bigbang CLI version. This value is automatically
-// changed in build time, do not change it manually.
-var Version = "undefined"
+import "os"
+
+func version() string {
+	if val, ok := os.LookupEnv("XCI_APP_VERSION"); ok {
+		return val
+	}
+
+	return "undefined"
+}
+
+var Version = version()
