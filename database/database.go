@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/dexlabsio/garlic/errors"
-	_ "github.com/jackc/pgx/v5"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -61,12 +61,14 @@ func (db *Database) BuildConnectionURL() string {
 // using options that describe the necessary
 // information.
 func (db *Database) Connect() error {
-	engine, err := sqlx.Open("pgx", db.BuildConnectionString())
+	cfg, err := pgx.ParseConfig(db.BuildConnectionString())
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid pg dsn: %w", err)
 	}
 
-	db.DB = engine
+	sqlDB := stdlib.OpenDB(*cfg)
+
+	db.DB = sqlx.NewDb(sqlDB, "pgx")
 	return nil
 }
 
