@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/dexlabsio/garlic/errors"
 	"github.com/dexlabsio/garlic/logging"
@@ -14,6 +15,8 @@ type Store interface {
 	Update(ctx context.Context, query string, args ...any) error
 	Delete(ctx context.Context, query string, args ...any) error
 	List(ctx context.Context, query string, resourceList any, args ...any) error
+	RawExec(ctx context.Context, query string, args ...any) (sql.Result, error)
+	NamedRawExec(ctx context.Context, query string, resource any) (sql.Result, error)
 }
 
 type Storer struct {

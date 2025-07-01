@@ -167,7 +167,7 @@ func (db *Database) Delete(ctx context.Context, query string, args ...any) error
 	executor := db.Executor(ctx)
 	res, err := executor.Exec(query, args...)
 	if err != nil {
-		return errors.PropagateAs(errors.KindSystemError, err, "failed to execute delete query")
+		return errors.PropagateAs(errors.KindSystemError, err, "failed to execute delete query", ectx)
 	}
 
 	rows, err := res.RowsAffected()
@@ -238,4 +238,34 @@ func (db *Database) Read(ctx context.Context, query string, resource any, args .
 	}
 
 	return nil
+}
+
+func (db *Database) RawExec(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	ectx := errors.Context(
+		errors.Field("query", query),
+		errors.Field("args", args),
+	)
+
+	executor := db.Executor(ctx)
+	res, err := executor.Exec(query, args...)
+	if err != nil {
+		return nil, errors.PropagateAs(errors.KindSystemError, err, "failed to execute arbitrary query", ectx)
+	}
+
+	return res, nil
+}
+
+func (db *Database) NamedRawExec(ctx context.Context, query string, resource any) (sql.Result, error) {
+	ectx := errors.Context(
+		errors.Field("query", query),
+		errors.Field("arg", resource),
+	)
+
+	executor := db.Executor(ctx)
+	res, err := executor.NamedExec(query, resource)
+	if err != nil {
+		return nil, errors.PropagateAs(errors.KindSystemError, err, "failed to execute arbitrary named query", ectx)
+	}
+
+	return res, nil
 }
