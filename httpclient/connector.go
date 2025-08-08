@@ -43,6 +43,10 @@ func (c *Connector) Request(ctx context.Context, req *Request, result any) error
 		return errors.Propagate(err, "failed to make request", ectx)
 	}
 
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
 	// We only support StatusOK and StatusCreated for successful operations
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 		err := handleFailure(res)

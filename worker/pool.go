@@ -13,7 +13,7 @@ type Pool struct {
 func NewPool(size int) *Pool {
 	p := &Pool{
 		size:  size,
-		tasks: make(chan Task, 0),
+		tasks: make(chan Task),
 	}
 	p.spawn()
 	return p
